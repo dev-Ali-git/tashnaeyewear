@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Filter, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -16,6 +16,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface Product {
   id: string;
@@ -34,11 +43,17 @@ interface Category {
 
 const Shop = () => {
   const { category } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [totalProducts, setTotalProducts] = useState(0);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   // Filter states
   const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
@@ -52,8 +67,15 @@ const Shop = () => {
 
   useEffect(() => {
     fetchCategories();
-    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when filters change
   }, [category, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [category, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy, currentPage]);
 
   const fetchCategories = async () => {
     const { data } = await supabase
@@ -65,39 +87,50 @@ const Shop = () => {
 
   const fetchProducts = async () => {
     setLoading(true);
-    let query = supabase
+    
+    // Build base query for filtering
+    let baseQuery = supabase
       .from("products")
-      .select("*")
+      .select("*", { count: 'exact' })
       .eq("is_active", true);
 
     // Category filter from URL param
     if (category) {
       const categoryData = categories.find(c => c.slug === category);
       if (categoryData) {
-        query = query.eq("category_id", categoryData.id);
+        baseQuery = baseQuery.eq("category_id", categoryData.id);
       }
     }
 
     // Category filter from checkboxes
     if (selectedCategories.length > 0) {
-      query = query.in("category_id", selectedCategories);
+      baseQuery = baseQuery.in("category_id", selectedCategories);
     }
 
     // Price range filter
-    query = query.gte("base_price", priceRange[0]).lte("base_price", priceRange[1]);
+    baseQuery = baseQuery.gte("base_price", priceRange[0]).lte("base_price", priceRange[1]);
 
     // Sorting
     if (sortBy === "price-asc") {
-      query = query.order("base_price", { ascending: true });
+      baseQuery = baseQuery.order("base_price", { ascending: true });
     } else if (sortBy === "price-desc") {
-      query = query.order("base_price", { ascending: false });
+      baseQuery = baseQuery.order("base_price", { ascending: false });
     } else if (sortBy === "name") {
-      query = query.order("title", { ascending: true });
+      baseQuery = baseQuery.order("title", { ascending: true });
     } else {
-      query = query.order("created_at", { ascending: false });
+      baseQuery = baseQuery.order("created_at", { ascending: false });
     }
 
-    const { data } = await query;
+    // Pagination
+    const from = (currentPage - 1) * itemsPerPage;
+    const to = from + itemsPerPage - 1;
+    baseQuery = baseQuery.range(from, to);
+
+    const { data, count } = await baseQuery;
+    
+    if (count !== null) {
+      setTotalProducts(count);
+    }
     
     let filteredProducts = data || [];
 
@@ -156,6 +189,86 @@ const Shop = () => {
     setSelectedSizes([]);
     setPriceRange([0, 50000]);
     setSortBy("newest");
+    setCurrentPage(1);
+  };
+
+  const totalPages = Math.ceil(totalProducts / itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderPaginationItems = () => {
+    const items = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        items.push(
+          <PaginationItem key={i}>
+            <PaginationLink
+              onClick={() => handlePageChange(i)}
+              isActive={currentPage === i}
+              className="cursor-pointer"
+            >
+              {i}
+            </PaginationLink>
+          </PaginationItem>
+        );
+      }
+    } else {
+      items.push(
+        <PaginationItem key={1}>
+          <PaginationLink
+            onClick={() => handlePageChange(1)}
+            isActive={currentPage === 1}
+            className="cursor-pointer"
+          >
+            1
+          </PaginationLink>
+        </PaginationItem>
+      );
+
+      if (currentPage > 3) {
+        items.push(<PaginationEllipsis key="ellipsis-1" />);
+      }
+
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        items.push(
+          <PaginationItem key={i}>
+            <PaginationLink
+              onClick={() => handlePageChange(i)}
+              isActive={currentPage === i}
+              className="cursor-pointer"
+            >
+              {i}
+            </PaginationLink>
+          </PaginationItem>
+        );
+      }
+
+      if (currentPage < totalPages - 2) {
+        items.push(<PaginationEllipsis key="ellipsis-2" />);
+      }
+
+      items.push(
+        <PaginationItem key={totalPages}>
+          <PaginationLink
+            onClick={() => handlePageChange(totalPages)}
+            isActive={currentPage === totalPages}
+            className="cursor-pointer"
+          >
+            {totalPages}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+
+    return items;
   };
 
   const currentCategory = categories.find(c => c.slug === category);
@@ -274,7 +387,7 @@ const Shop = () => {
             {currentCategory ? currentCategory.name : "All Products"}
           </h1>
           <p className="text-muted-foreground">
-            {products.length} {products.length === 1 ? "product" : "products"} found
+            {totalProducts} {totalProducts === 1 ? "product" : "products"} found
           </p>
         </div>
 
@@ -346,18 +459,45 @@ const Shop = () => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    title={product.title}
-                    price={product.base_price}
-                    image={product.images?.[0] || "/placeholder.svg"}
-                    slug={product.slug}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      id={product.id}
+                      title={product.title}
+                      price={product.base_price}
+                      image={product.images?.[0] || "/placeholder.svg"}
+                      slug={product.slug}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-12 flex justify-center">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        
+                        {renderPaginationItems()}
+                        
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
