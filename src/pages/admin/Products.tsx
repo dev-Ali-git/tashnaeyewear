@@ -57,12 +57,13 @@ const ProductsManagement = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
+    const categoryId = formData.get("category_id") as string;
     const productData = {
       title: formData.get("title") as string,
       slug: (formData.get("title") as string).toLowerCase().replace(/\s+/g, "-"),
       description: formData.get("description") as string,
       base_price: Number(formData.get("base_price")),
-      category_id: formData.get("category_id") as string || null,
+      category_id: categoryId === "none" ? null : categoryId,
       is_active: formData.get("is_active") === "on",
       is_featured: formData.get("is_featured") === "on",
       has_lens_options: formData.get("has_lens_options") === "on",
@@ -162,12 +163,12 @@ const ProductsManagement = () => {
               </div>
               <div>
                 <Label htmlFor="category_id">Category</Label>
-                <Select name="category_id" defaultValue={editingProduct?.category_id || ""}>
+                <Select name="category_id" defaultValue={editingProduct?.category_id || "none"}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Category</SelectItem>
+                    <SelectItem value="none">No Category</SelectItem>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.name}
