@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Product {
@@ -32,6 +33,7 @@ interface Category {
 }
 
 const ProductsManagement = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -240,25 +242,36 @@ const ProductsManagement = () => {
                   {product.is_active && <Badge>Active</Badge>}
                   {product.is_featured && <Badge variant="outline">Featured</Badge>}
                 </div>
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-col gap-2 pt-2">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setEditingProduct(product);
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteProduct(product.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setEditingProduct(product);
-                      setIsDialogOpen(true);
-                    }}
+                    className="w-full"
+                    onClick={() => navigate(`/admin/products/${product.id}/variants`)}
                   >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => deleteProduct(product.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
+                    <Package className="h-4 w-4 mr-1" />
+                    Manage Variants & Stock
                   </Button>
                 </div>
               </div>
