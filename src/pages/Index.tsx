@@ -20,13 +20,26 @@ interface Product {
   slug: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string | null;
+}
+
 const Index = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFeaturedProducts();
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    await Promise.all([fetchFeaturedProducts(), fetchCategories()]);
+  };
 
   const fetchFeaturedProducts = async () => {
     try {
@@ -46,32 +59,19 @@ const Index = () => {
     }
   };
 
-  const categories = [
-    {
-      name: "Frames",
-      image: categoryFrames,
-      link: "/shop/frames",
-      description: "Premium optical frames"
-    },
-    {
-      name: "Sunglasses",
-      image: categorySunglasses,
-      link: "/shop/sunglasses",
-      description: "Stylish sun protection"
-    },
-    {
-      name: "Protection",
-      image: categoryProtection,
-      link: "/shop/protection",
-      description: "Blue-cut & anti-glare"
-    },
-    {
-      name: "Contacts",
-      image: categoryContacts,
-      link: "/shop/contacts",
-      description: "Quality contact lenses"
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, slug, description, image_url')
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
     }
-  ];
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -114,13 +114,13 @@ const Index = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {categories.map((category) => (
                 <Link
-                  key={category.name}
-                  to={category.link}
+                  key={category.id}
+                  to={`/shop/${category.slug}`}
                   className="group"
                 >
                   <div className="aspect-square overflow-hidden rounded-lg mb-3 bg-card">
                     <img
-                      src={category.image}
+                      src={category.image_url || categoryFrames}
                       alt={category.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
@@ -128,9 +128,11 @@ const Index = () => {
                   <h3 className="font-semibold text-center group-hover:text-accent transition-colors">
                     {category.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground text-center">
-                    {category.description}
-                  </p>
+                  {category.description && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      {category.description}
+                    </p>
+                  )}
                 </Link>
               ))}
             </div>
