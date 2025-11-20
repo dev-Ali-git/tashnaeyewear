@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Heart, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useCart } from "@/contexts/CartContext";
 
 interface ProductCardProps {
   id: string;
@@ -12,6 +13,13 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ id, title, price, image, slug }: ProductCardProps) => {
+  const { addToCart } = useCart();
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await addToCart(id);
+  };
+
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
       <Link to={`/product/${slug}`} className="block">
@@ -50,10 +58,7 @@ const ProductCard = ({ id, title, price, image, slug }: ProductCardProps) => {
               variant="default"
               size="icon"
               className="h-8 w-8"
-              onClick={(e) => {
-                e.preventDefault();
-                // Add to cart logic
-              }}
+              onClick={handleAddToCart}
             >
               <ShoppingCart className="h-4 w-4" />
             </Button>
