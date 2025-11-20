@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { Badge } from "@/components/ui/badge";
 
 const Header = () => {
@@ -13,6 +14,7 @@ const Header = () => {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const { cartCount } = useCart();
+  const { wishlistItems } = useWishlist();
 
   useEffect(() => {
     checkUser();
@@ -84,9 +86,14 @@ const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" asChild className="hidden md:flex">
+            <Button variant="ghost" size="icon" asChild className="hidden md:flex relative">
               <Link to="/wishlist">
                 <Heart className="h-5 w-5" />
+                {wishlistItems.length > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    {wishlistItems.length}
+                  </Badge>
+                )}
               </Link>
             </Button>
             <Button variant="ghost" size="icon" asChild>

@@ -260,6 +260,24 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
+      // Reduce stock for each item with variant
+      for (const item of cartItems) {
+        if (item.variant_id) {
+          const { data: variant } = await supabase
+            .from("product_variants")
+            .select("stock")
+            .eq("id", item.variant_id)
+            .single();
+
+          if (variant) {
+            await supabase
+              .from("product_variants")
+              .update({ stock: Math.max(0, variant.stock - item.quantity) })
+              .eq("id", item.variant_id);
+          }
+        }
+      }
+
       // Clear cart
       const { error: deleteError } = await supabase
         .from("cart_items")

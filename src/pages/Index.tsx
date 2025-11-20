@@ -12,12 +12,17 @@ import categorySunglasses from "@/assets/category-sunglasses.jpg";
 import categoryProtection from "@/assets/category-protection.jpg";
 import categoryContacts from "@/assets/category-contacts.jpg";
 
+interface ProductVariant {
+  stock: number;
+}
+
 interface Product {
   id: string;
   title: string;
   base_price: number;
   images: string[];
   slug: string;
+  product_variants?: ProductVariant[];
 }
 
 interface Category {
@@ -45,7 +50,14 @@ const Index = () => {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, base_price, images, slug')
+        .select(`
+          id, 
+          title, 
+          base_price, 
+          images, 
+          slug,
+          product_variants(stock)
+        `)
         .eq('is_featured', true)
         .eq('is_active', true)
         .limit(4);
@@ -152,16 +164,20 @@ const Index = () => {
               {loading ? (
                 <p className="col-span-full text-center text-muted-foreground">Loading products...</p>
               ) : featuredProducts.length > 0 ? (
-                featuredProducts.map((product) => (
-                  <ProductCard 
-                    key={product.id} 
-                    id={product.id}
-                    title={product.title}
-                    price={product.base_price}
-                    image={product.images[0] || categoryFrames}
-                    slug={product.slug}
-                  />
-                ))
+                featuredProducts.map((product) => {
+                  const totalStock = product.product_variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+                  return (
+                    <ProductCard 
+                      key={product.id} 
+                      id={product.id}
+                      title={product.title}
+                      price={product.base_price}
+                      image={product.images[0] || categoryFrames}
+                      slug={product.slug}
+                      stock={totalStock}
+                    />
+                  );
+                })
               ) : (
                 <p className="col-span-full text-center text-muted-foreground">No featured products available</p>
               )}
