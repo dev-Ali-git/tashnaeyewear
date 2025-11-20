@@ -1,47 +1,50 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import heroBanner from "@/assets/hero-banner.jpg";
 import categoryFrames from "@/assets/category-frames.jpg";
 import categorySunglasses from "@/assets/category-sunglasses.jpg";
 import categoryProtection from "@/assets/category-protection.jpg";
 import categoryContacts from "@/assets/category-contacts.jpg";
 
+interface Product {
+  id: string;
+  title: string;
+  base_price: number;
+  images: string[];
+  slug: string;
+}
+
 const Index = () => {
-  // Sample products - will be replaced with real data
-  const featuredProducts = [
-    {
-      id: "1",
-      title: "Classic Aviator Frames",
-      price: 4500,
-      image: categoryFrames,
-      slug: "classic-aviator-frames"
-    },
-    {
-      id: "2",
-      title: "Premium Sunglasses",
-      price: 6500,
-      image: categorySunglasses,
-      slug: "premium-sunglasses"
-    },
-    {
-      id: "3",
-      title: "Blue-Cut Protection",
-      price: 3500,
-      image: categoryProtection,
-      slug: "blue-cut-protection"
-    },
-    {
-      id: "4",
-      title: "Contact Lenses Pack",
-      price: 2500,
-      image: categoryContacts,
-      slug: "contact-lenses-pack"
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturedProducts();
+  }, []);
+
+  const fetchFeaturedProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, title, base_price, images, slug')
+        .eq('is_featured', true)
+        .eq('is_active', true)
+        .limit(4);
+
+      if (error) throw error;
+      setFeaturedProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching featured products:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const categories = [
     {
@@ -144,9 +147,22 @@ const Index = () => {
               </Button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} {...product} />
-              ))}
+              {loading ? (
+                <p className="col-span-full text-center text-muted-foreground">Loading products...</p>
+              ) : featuredProducts.length > 0 ? (
+                featuredProducts.map((product) => (
+                  <ProductCard 
+                    key={product.id} 
+                    id={product.id}
+                    title={product.title}
+                    price={product.base_price}
+                    image={product.images[0] || categoryFrames}
+                    slug={product.slug}
+                  />
+                ))
+              ) : (
+                <p className="col-span-full text-center text-muted-foreground">No featured products available</p>
+              )}
             </div>
           </div>
         </section>
