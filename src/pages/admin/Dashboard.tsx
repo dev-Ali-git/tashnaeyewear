@@ -12,6 +12,7 @@ import CustomersManagement from "./Customers";
 import AnalyticsDashboard from "./Analytics";
 import LensTypesManagement from "./LensTypes";
 import CategoriesManagement from "./Categories";
+import PagesManagement from "./Pages";
 
 interface Stats {
   totalOrders: number;
@@ -42,13 +43,12 @@ const AdminDashboard = () => {
     }
 
     const { data: roleData } = await supabase
-      .from("user_roles")
+      .from("profiles")
       .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
+      .eq("id", user.id)
       .single();
 
-    if (!roleData) {
+    if (roleData?.role !== "admin") {
       navigate("/");
       return;
     }
@@ -97,6 +97,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="pages">Pages</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -165,6 +166,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="analytics">
             <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="pages">
+            <PagesManagement />
           </TabsContent>
         </Tabs>
       </main>

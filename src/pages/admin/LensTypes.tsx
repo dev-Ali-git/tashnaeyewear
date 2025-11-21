@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, X } from "lucide-react";
 
 interface LensType {
   id: string;
@@ -37,6 +37,8 @@ const LensTypesManagement = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLensType, setEditingLensType] = useState<LensType | null>(null);
   const [selectedProductFilter, setSelectedProductFilter] = useState<string>("all");
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -85,6 +87,49 @@ const LensTypesManagement = () => {
     setProducts(data || []);
   };
 
+  const uploadImage = async (file: File) => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("product-images")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setUploadedImage(url);
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -96,7 +141,7 @@ const LensTypesManagement = () => {
       product_id: formData.get("product_id") as string,
       display_order: Number(formData.get("display_order")) || 0,
       is_enabled: formData.get("is_enabled") === "on",
-      image_url: formData.get("image_url") as string || null,
+      image_url: uploadedImage || editingLensType?.image_url || null,
     };
 
     let error;
@@ -129,6 +174,7 @@ const LensTypesManagement = () => {
 
     setDialogOpen(false);
     setEditingLensType(null);
+    setUploadedImage(null);
     fetchLensTypes();
   };
 
@@ -159,11 +205,13 @@ const LensTypesManagement = () => {
 
   const openEditDialog = (lensType: LensType) => {
     setEditingLensType(lensType);
+    setUploadedImage(lensType.image_url);
     setDialogOpen(true);
   };
 
   const openAddDialog = () => {
     setEditingLensType(null);
+    setUploadedImage(null);
     setDialogOpen(true);
   };
 
@@ -256,13 +304,38 @@ const LensTypesManagement = () => {
               </div>
 
               <div>
-                <Label htmlFor="image_url">Image URL</Label>
-                <Input
-                  id="image_url"
-                  name="image_url"
-                  defaultValue={editingLensType?.image_url || ""}
-                  placeholder="https://..."
-                />
+                <Label htmlFor="image">Lens Type Image</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploading}
+                      className="cursor-pointer"
+                    />
+                    {uploading && <span className="text-sm text-muted-foreground">Uploading...</span>}
+                  </div>
+                  {uploadedImage && (
+                    <div className="relative inline-block">
+                      <img
+                        src={uploadedImage}
+                        alt="Preview"
+                        className="w-32 h-32 object-cover rounded border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6"
+                        onClick={() => setUploadedImage(null)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center space-x-2">

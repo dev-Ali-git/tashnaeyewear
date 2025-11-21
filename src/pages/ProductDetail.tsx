@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -31,6 +31,7 @@ interface ProductVariant {
   price_adjustment: number | null;
   stock: number | null;
   sku: string;
+  images: string[];
 }
 
 interface LensType {
@@ -38,6 +39,7 @@ interface LensType {
   name: string;
   description: string | null;
   price_adjustment: number | null;
+  image_url: string | null;
 }
 
 interface Category {
@@ -65,13 +67,7 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  useEffect(() => {
-    if (slug) {
-      fetchProductData();
-    }
-  }, [slug]);
-
-  const fetchProductData = async () => {
+  const fetchProductData = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch product
@@ -123,7 +119,7 @@ const ProductDetail = () => {
       if (productData.has_lens_options) {
         const { data: lensTypesData } = await supabase
           .from("lens_types")
-          .select("*")
+          .select("id, name, description, price_adjustment, image_url")
           .eq("product_id", productData.id)
           .eq("is_enabled", true)
           .order("display_order");
@@ -140,7 +136,13 @@ const ProductDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [slug, toast, navigate]);
+
+  useEffect(() => {
+    if (slug) {
+      fetchProductData();
+    }
+  }, [slug, fetchProductData]);
 
   const calculateTotalPrice = () => {
     if (!product) return 0;
@@ -153,8 +155,8 @@ const ProductDetail = () => {
       if (variant && variant.price_adjustment) total += variant.price_adjustment;
     }
     
-    // Add lens type price adjustment
-    if (lensConfig.hasEyesight && lensConfig.lensTypeId) {
+    // Add lens type price adjustment (whenever a lens type is selected)
+    if (lensConfig.lensTypeId) {
       const lensType = lensTypes.find(l => l.id === lensConfig.lensTypeId);
       if (lensType && lensType.price_adjustment) total += lensType.price_adjustment;
     }
@@ -164,8 +166,23 @@ const ProductDetail = () => {
 
   const getProductImages = () => {
     if (!product) return [];
-    if (product.images && product.images.length > 0) return product.images;
-    return ["/placeholder.svg"];
+    
+    let allImages: string[] = [];
+    
+    // Add base product images
+    if (product.images && product.images.length > 0) {
+      allImages = [...product.images];
+    }
+    
+    // Add variant images if a variant is selected
+    if (selectedVariant) {
+      const variant = variants.find(v => v.id === selectedVariant);
+      if (variant && variant.images && variant.images.length > 0) {
+        allImages = [...variant.images, ...allImages];
+      }
+    }
+    
+    return allImages.length > 0 ? allImages : ["/placeholder.svg"];
   };
 
   // Calculate total and selected variant stock
@@ -194,12 +211,43 @@ const ProductDetail = () => {
       await addToCart(
         product.id,
         selectedVariant || undefined,
-        lensConfig.hasEyesight && lensConfig.lensTypeId ? lensConfig.lensTypeId : undefined,
+        lensConfig.lensTypeId || undefined,
         quantity
       );
     } finally {
       setIsAddingToCart(false);
     }
+  };
+
+  // Check if lens configuration is complete when product has lens options
+  const isLensConfigurationValid = () => {
+    // If product doesn't have lens options, no validation needed
+    if (!product?.has_lens_options) return true;
+    
+    // Must select a lens type
+    if (!lensConfig.lensTypeId) return false;
+    
+    // If eyesight lenses are selected, must choose upload or manual entry
+    if (lensConfig.hasEyesight) {
+      // Must have prescription type selected
+      if (!lensConfig.prescriptionType) return false;
+      
+      // If upload is selected, must have a file
+      if (lensConfig.prescriptionType === 'upload' && !lensConfig.prescriptionImage) {
+        return false;
+      }
+      
+      // If manual is selected, check if at least some data is entered
+      if (lensConfig.prescriptionType === 'manual' && lensConfig.prescriptionData) {
+        const { rightEye, leftEye } = lensConfig.prescriptionData;
+        // At least one field should have data
+        const hasRightEyeData = rightEye.sph || rightEye.cyl || rightEye.axis || rightEye.add || rightEye.pd;
+        const hasLeftEyeData = leftEye.sph || leftEye.cyl || leftEye.axis || leftEye.add || leftEye.pd;
+        if (!hasRightEyeData && !hasLeftEyeData) return false;
+      }
+    }
+    
+    return true;
   };
 
   const handleWishlistToggle = async () => {
@@ -243,13 +291,13 @@ const ProductDetail = () => {
             <div>
               <div className="aspect-square bg-secondary rounded-lg overflow-hidden mb-4">
                 <img
-                  src={product.images[selectedImage]}
+                  src={productImages[selectedImage]}
                   alt={product.title}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="grid grid-cols-4 gap-2">
-                {product.images.map((img, idx) => (
+                {productImages.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
@@ -288,7 +336,10 @@ const ProductDetail = () => {
                       return (
                         <button
                           key={variant.id}
-                          onClick={() => setSelectedVariant(variant.id)}
+                          onClick={() => {
+                            setSelectedVariant(variant.id);
+                            setSelectedImage(0);
+                          }}
                           disabled={isVariantOutOfStock}
                           className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
                             selectedVariant === variant.id
@@ -314,6 +365,25 @@ const ProductDetail = () => {
                     })}
                   </div>
                 </div>
+              )}
+
+              {/* Lens Options - Using LensSelector component */}
+              {product.has_lens_options && lensTypes.length > 0 && (
+                <>
+                  <Separator className="my-6" />
+                  <div className="mb-6">
+                    <LensSelector
+                      lensTypes={lensTypes.map(l => ({
+                        id: l.id,
+                        name: l.name,
+                        description: l.description || undefined,
+                        imageUrl: l.image_url || undefined,
+                        priceAdjustment: l.price_adjustment || 0
+                      }))}
+                      onLensConfigChange={(config) => setLensConfig(config)}
+                    />
+                  </div>
+                </>
               )}
 
               <Separator className="my-6" />
@@ -344,7 +414,7 @@ const ProductDetail = () => {
                   size="lg" 
                   className="flex-1" 
                   onClick={handleAddToCart} 
-                  disabled={isOutOfStock || isAddingToCart}
+                  disabled={isOutOfStock || isAddingToCart || !isLensConfigurationValid()}
                 >
                   {isAddingToCart ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -377,40 +447,6 @@ const ProductDetail = () => {
                   <span>30-day return policy</span>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Lens Selector - Only show for products with lens options */}
-          {product.has_lens_options && lensTypes.length > 0 && (
-            <div className="max-w-4xl mx-auto mb-12">
-              <h2 className="text-2xl font-bold mb-6">Customize Your Lenses</h2>
-              <LensSelector
-                lensTypes={lensTypes.map(lt => ({
-                  id: lt.id,
-                  name: lt.name,
-                  description: lt.description || "",
-                  priceAdjustment: lt.price_adjustment || 0
-                }))}
-                onLensConfigChange={setLensConfig}
-              />
-            </div>
-          )}
-
-          {/* Sticky Add to Cart for Mobile */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-40">
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <div className="text-sm text-muted-foreground">Total Price</div>
-                <div className="font-bold text-lg">Rs. {calculateTotalPrice().toLocaleString()}</div>
-              </div>
-              <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={!inStock || isAddingToCart}>
-                {isAddingToCart ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <ShoppingCart className="mr-2 h-5 w-5" />
-                )}
-                {isAddingToCart ? "Adding..." : "Add to Cart"}
-              </Button>
             </div>
           </div>
         </div>

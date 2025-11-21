@@ -57,12 +57,11 @@ const Header = () => {
 
   const checkAdminRole = async (userId: string) => {
     const { data } = await supabase
-      .from("user_roles")
+      .from("profiles")
       .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
+      .eq("id", userId)
       .maybeSingle();
-    setIsAdmin(!!data);
+    setIsAdmin(data?.role === "admin");
   };
 
   const handleSignOut = async () => {
@@ -179,7 +178,7 @@ const Header = () => {
               {category.name}
             </Link>
           ))}
-          <Link to="/about" className="text-sm font-medium hover:text-accent transition-colors">
+          <Link to="/about-us" className="text-sm font-medium hover:text-accent transition-colors">
             About Us
           </Link>
         </nav>
@@ -210,7 +209,7 @@ const Header = () => {
                 {category.name}
               </Link>
             ))}
-            <Link to="/about" className="block py-2 text-sm font-medium" onClick={() => setIsMenuOpen(false)}>
+            <Link to="/about-us" className="block py-2 text-sm font-medium" onClick={() => setIsMenuOpen(false)}>
               About Us
             </Link>
           </nav>

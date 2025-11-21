@@ -568,7 +568,7 @@ const Shop = () => {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
                   {products.map((product) => {
                     const totalStock = product.product_variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
                     return (

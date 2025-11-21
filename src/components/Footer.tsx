@@ -59,17 +59,17 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">Customer Service</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/contact" className="text-muted-foreground hover:text-foreground">
+                <Link to="/contact-us" className="text-muted-foreground hover:text-foreground">
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link to="/shipping" className="text-muted-foreground hover:text-foreground">
+                <Link to="/shipping-policy" className="text-muted-foreground hover:text-foreground">
                   Shipping Policy
                 </Link>
               </li>
               <li>
-                <Link to="/returns" className="text-muted-foreground hover:text-foreground">
+                <Link to="/returns-exchanges" className="text-muted-foreground hover:text-foreground">
                   Returns & Exchanges
                 </Link>
               </li>
@@ -86,17 +86,17 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/privacy" className="text-muted-foreground hover:text-foreground">
+                <Link to="/privacy-policy" className="text-muted-foreground hover:text-foreground">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="text-muted-foreground hover:text-foreground">
+                <Link to="/terms-conditions" className="text-muted-foreground hover:text-foreground">
                   Terms & Conditions
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="text-muted-foreground hover:text-foreground">
+                <Link to="/about-us" className="text-muted-foreground hover:text-foreground">
                   About Us
                 </Link>
               </li>

@@ -22,6 +22,14 @@ import Customers from "./pages/admin/Customers";
 import Analytics from "./pages/admin/Analytics";
 import LensTypes from "./pages/admin/LensTypes";
 import Categories from "./pages/admin/Categories";
+import Pages from "./pages/admin/Pages";
+import ContactUs from "./pages/ContactUs";
+import ShippingPolicy from "./pages/ShippingPolicy";
+import ReturnsExchanges from "./pages/ReturnsExchanges";
+import FAQ from "./pages/FAQ";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsConditions from "./pages/TermsConditions";
+import AboutUs from "./pages/AboutUs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +54,15 @@ const App = () => (
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               <Route path="/account" element={<Account />} />
               
+              {/* Public Pages */}
+              <Route path="/contact-us" element={<ContactUs />} />
+              <Route path="/shipping-policy" element={<ShippingPolicy />} />
+              <Route path="/returns-exchanges" element={<ReturnsExchanges />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-conditions" element={<TermsConditions />} />
+              <Route path="/about-us" element={<AboutUs />} />
+              
               {/* Admin Routes */}
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/products" element={<Products />} />
@@ -55,6 +72,7 @@ const App = () => (
               <Route path="/admin/customers" element={<Customers />} />
               <Route path="/admin/analytics" element={<Analytics />} />
               <Route path="/admin/lens-types" element={<LensTypes />} />
+              <Route path="/admin/pages" element={<Pages />} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>

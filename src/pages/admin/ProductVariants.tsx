@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, Upload, X } from "lucide-react";
 
 interface Variant {
   id: string;
@@ -27,6 +27,8 @@ const ProductVariants = () => {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchVariants();
@@ -45,6 +47,48 @@ const ProductVariants = () => {
     setLoading(false);
   };
 
+  const uploadImage = async (file: File) => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("product-images")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const urls = await Promise.all(
+        Array.from(files).map(file => uploadImage(file))
+      );
+      setUploadedImages([...uploadedImages, ...urls]);
+      toast.success("Images uploaded successfully");
+    } catch (error) {
+      toast.error("Failed to upload images");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages(uploadedImages.filter((_, i) => i !== index));
+  };
+
   const saveVariant = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -57,7 +101,7 @@ const ProductVariants = () => {
       material: formData.get("material") as string || null,
       stock: Number(formData.get("stock")),
       price_adjustment: Number(formData.get("price_adjustment")),
-      images: (formData.get("images") as string).split(",").map(url => url.trim()).filter(Boolean)
+      images: uploadedImages
     };
 
     if (editingVariant) {
@@ -72,6 +116,7 @@ const ProductVariants = () => {
         toast.success("Variant updated");
         setIsDialogOpen(false);
         setEditingVariant(null);
+        setUploadedImages([]);
         fetchVariants();
       }
     } else {
@@ -84,6 +129,7 @@ const ProductVariants = () => {
       } else {
         toast.success("Variant created");
         setIsDialogOpen(false);
+        setUploadedImages([]);
         fetchVariants();
       }
     }
@@ -117,9 +163,18 @@ const ProductVariants = () => {
           </Button>
           <h1 className="text-3xl font-bold">Product Variants</h1>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingVariant(null);
+            setUploadedImages([]);
+          }
+        }}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingVariant(null)}>
+            <Button onClick={() => {
+              setEditingVariant(null);
+              setUploadedImages([]);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Add Variant
             </Button>
@@ -164,13 +219,43 @@ const ProductVariants = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="images">Image URLs (comma-separated)</Label>
-                <Input
-                  id="images"
-                  name="images"
-                  defaultValue={editingVariant?.images.join(", ")}
-                  placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                />
+                <Label htmlFor="images">Product Images</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="images"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      disabled={uploading}
+                      className="cursor-pointer"
+                    />
+                    {uploading && <span className="text-sm text-muted-foreground">Uploading...</span>}
+                  </div>
+                  {uploadedImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {uploadedImages.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Upload ${index + 1}`}
+                            className="w-full h-24 object-cover rounded border"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeImage(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <Button type="submit" className="w-full">
                 {editingVariant ? "Update Variant" : "Create Variant"}
@@ -203,6 +288,7 @@ const ProductVariants = () => {
                     className="flex-1"
                     onClick={() => {
                       setEditingVariant(variant);
+                      setUploadedImages(variant.images || []);
                       setIsDialogOpen(true);
                     }}
                   >

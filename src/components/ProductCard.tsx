@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, ShoppingCart, Loader2 } from "lucide-react";
+import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { cn } from "@/lib/utils";
 
@@ -18,10 +17,8 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ id, title, price, image, slug, stock = 0 }: ProductCardProps) => {
-  const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const inWishlist = isInWishlist(id);
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   // Stock status logic
   const isOutOfStock = stock === 0;
@@ -37,17 +34,6 @@ const ProductCard = ({ id, title, price, image, slug, stock = 0 }: ProductCardPr
     }
     if (isInStock) {
       return <Badge variant="secondary" className="absolute top-2 right-2 bg-green-500 text-white">In Stock</Badge>;
-    }
-  };
-
-  const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (isAddingToCart) return;
-    setIsAddingToCart(true);
-    try {
-      await addToCart(id);
-    } finally {
-      setIsAddingToCart(false);
     }
   };
 
@@ -85,30 +71,14 @@ const ProductCard = ({ id, title, price, image, slug, stock = 0 }: ProductCardPr
             <p className="font-bold text-lg">Rs. {price.toLocaleString()}</p>
           </div>
           
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("h-8 w-8", inWishlist && "text-red-500")}
-              onClick={handleWishlistToggle}
-            >
-              <Heart className={cn("h-4 w-4", inWishlist && "fill-current")} />
-            </Button>
-            <Button
-              variant="default"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleAddToCart}
-              disabled={isAddingToCart || isOutOfStock}
-              title={isOutOfStock ? "Out of stock" : "Add to cart"}
-            >
-              {isAddingToCart ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ShoppingCart className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-8 w-8", inWishlist && "text-red-500")}
+            onClick={handleWishlistToggle}
+          >
+            <Heart className={cn("h-4 w-4", inWishlist && "fill-current")} />
+          </Button>
         </div>
       </div>
     </Card>

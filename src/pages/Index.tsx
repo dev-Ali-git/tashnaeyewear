@@ -35,15 +35,17 @@ interface Category {
 
 const Index = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingNewArrivals, setLoadingNewArrivals] = useState(true);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    await Promise.all([fetchFeaturedProducts(), fetchCategories()]);
+    await Promise.all([fetchFeaturedProducts(), fetchNewArrivals(), fetchCategories()]);
   };
 
   const fetchFeaturedProducts = async () => {
@@ -68,6 +70,32 @@ const Index = () => {
       console.error('Error fetching featured products:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchNewArrivals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          id, 
+          title, 
+          base_price, 
+          images, 
+          slug,
+          product_variants(stock),
+          created_at
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setNewArrivals(data || []);
+    } catch (error) {
+      console.error('Error fetching new arrivals:', error);
+    } finally {
+      setLoadingNewArrivals(false);
     }
   };
 
@@ -160,7 +188,7 @@ const Index = () => {
                 <Link to="/shop">View All</Link>
               </Button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
               {loading ? (
                 <p className="col-span-full text-center text-muted-foreground">Loading products...</p>
               ) : featuredProducts.length > 0 ? (
@@ -180,6 +208,40 @@ const Index = () => {
                 })
               ) : (
                 <p className="col-span-full text-center text-muted-foreground">No featured products available</p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* New Arrivals */}
+        <section className="py-16 bg-secondary">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-12">
+              <h2 className="text-3xl font-bold">New Arrivals</h2>
+              <Button variant="outline" asChild>
+                <Link to="/shop">View All</Link>
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+              {loadingNewArrivals ? (
+                <p className="col-span-full text-center text-muted-foreground">Loading new arrivals...</p>
+              ) : newArrivals.length > 0 ? (
+                newArrivals.map((product) => {
+                  const totalStock = product.product_variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+                  return (
+                    <ProductCard 
+                      key={product.id} 
+                      id={product.id}
+                      title={product.title}
+                      price={product.base_price}
+                      image={product.images[0] || categoryFrames}
+                      slug={product.slug}
+                      stock={totalStock}
+                    />
+                  );
+                })
+              ) : (
+                <p className="col-span-full text-center text-muted-foreground">No new arrivals available</p>
               )}
             </div>
           </div>

@@ -59,7 +59,7 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
     setHasEyesight(hasEye);
     onLensConfigChange({
       hasEyesight: hasEye,
-      lensTypeId: hasEye ? selectedLensType : undefined,
+      lensTypeId: selectedLensType || undefined, // Include lens type if selected
       prescriptionType: hasEye ? prescriptionType : undefined,
       prescriptionImage: hasEye && prescriptionType === 'upload' ? prescriptionFile || undefined : undefined
     });
@@ -69,19 +69,23 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
     setSelectedLensType(lensTypeId);
     onLensConfigChange({
       hasEyesight,
-      lensTypeId,
-      prescriptionType,
-      prescriptionImage: prescriptionType === 'upload' ? prescriptionFile || undefined : undefined
+      lensTypeId, // Always send lens type ID even when hasEyesight is false
+      prescriptionType: hasEyesight ? prescriptionType : undefined,
+      prescriptionImage: hasEyesight && prescriptionType === 'upload' ? prescriptionFile || undefined : undefined,
+      prescriptionData: hasEyesight && prescriptionType === 'manual' ? { rightEye, leftEye } : undefined
     });
   };
 
   const handlePrescriptionTypeChange = (type: 'upload' | 'manual') => {
+    // Selecting a prescription input method implies eyesight lenses
+    setHasEyesight(true);
     setPrescriptionType(type);
     onLensConfigChange({
-      hasEyesight,
+      hasEyesight: true,
       lensTypeId: selectedLensType,
       prescriptionType: type,
-      prescriptionImage: type === 'upload' ? prescriptionFile || undefined : undefined
+      prescriptionImage: type === 'upload' ? prescriptionFile || undefined : undefined,
+      prescriptionData: type === 'manual' ? { rightEye, leftEye } : undefined
     });
   };
 
@@ -123,8 +127,9 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
       setPrescriptionPreview(null);
     }
 
+    setHasEyesight(true);
     onLensConfigChange({
-      hasEyesight,
+      hasEyesight: true,
       lensTypeId: selectedLensType,
       prescriptionType: 'upload',
       prescriptionImage: file
@@ -151,77 +156,111 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Step 1: Select Lens Option */}
-      <Card className="p-6">
-        <h3 className="font-semibold text-lg mb-4">Step 1: Select Lens Option</h3>
+      <div>
+        <h3 className="font-semibold text-lg mb-4 flex items-center">
+          <span className="text-red-500 mr-2">*</span>
+          Select Lense
+        </h3>
         <RadioGroup value={hasEyesight ? "yes" : "no"} onValueChange={handleEyesightChange}>
-          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-secondary cursor-pointer">
-            <RadioGroupItem value="no" id="no-eyesight" />
-            <Label htmlFor="no-eyesight" className="cursor-pointer flex-1">
-              No Eyesight (Zero Power)
+          <div className="grid grid-cols-2 gap-4">
+            <Label 
+              htmlFor="no-eyesight" 
+              className={`flex items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:border-gray-400 ${
+                !hasEyesight ? 'border-red-500 bg-red-50 ring-2 ring-red-200' : 'border-gray-300'
+              }`}
+            >
+              <RadioGroupItem value="no" id="no-eyesight" className="mr-2" />
+              <span className="font-medium">No Eyesight</span>
             </Label>
-          </div>
-          <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-secondary cursor-pointer">
-            <RadioGroupItem value="yes" id="yes-eyesight" />
-            <Label htmlFor="yes-eyesight" className="cursor-pointer flex-1">
-              Eyesight Lenses (Prescription)
+            <Label 
+              htmlFor="yes-eyesight" 
+              className={`flex items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all hover:border-gray-400 ${
+                hasEyesight ? 'border-red-500 bg-red-50 ring-2 ring-red-200' : 'border-gray-300'
+              }`}
+            >
+              <RadioGroupItem value="yes" id="yes-eyesight" className="mr-2" />
+              <span className="font-medium">Eyesight Lenses</span>
             </Label>
           </div>
         </RadioGroup>
-      </Card>
+      </div>
 
       {/* Step 2: Choose Lens Type */}
-      {hasEyesight && (
-        <Card className="p-6">
-          <h3 className="font-semibold text-lg mb-4">Step 2: Choose Lens Type</h3>
-          <RadioGroup value={selectedLensType} onValueChange={handleLensTypeChange}>
+      <div>
+        <h3 className="font-semibold text-lg mb-4 flex items-center">
+          <span className="text-red-500 mr-2">*</span>
+          Lenses options
+        </h3>
+        <RadioGroup value={selectedLensType} onValueChange={handleLensTypeChange}>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {lensTypes.map((lens) => (
-              <div
+              <Label
                 key={lens.id}
-                className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-secondary cursor-pointer"
+                htmlFor={lens.id}
+                className={`block border-2 rounded-lg overflow-hidden cursor-pointer transition-all hover:border-gray-400 ${
+                  selectedLensType === lens.id ? 'border-red-500 ring-2 ring-red-500' : 'border-gray-300'
+                }`}
               >
-                <RadioGroupItem value={lens.id} id={lens.id} />
-                {lens.imageUrl && (
-                  <img src={lens.imageUrl} alt={lens.name} className="h-12 w-12 object-cover rounded" />
-                )}
-                <div className="flex-1">
-                  <Label htmlFor={lens.id} className="cursor-pointer font-medium">
-                    {lens.name}
-                  </Label>
-                  {lens.description && (
-                    <p className="text-sm text-muted-foreground">{lens.description}</p>
+                <RadioGroupItem value={lens.id} id={lens.id} className="sr-only" />
+                  {lens.imageUrl && (
+                    <div className="aspect-square sm:aspect-[4/3] bg-gray-100 overflow-hidden">
+                      <img 
+                        src={lens.imageUrl} 
+                        alt={lens.name} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   )}
-                </div>
-                {lens.priceAdjustment > 0 && (
-                  <span className="text-sm font-semibold">
-                    +Rs. {lens.priceAdjustment.toLocaleString()}
-                  </span>
-                )}
-              </div>
+                  <div className="p-2 sm:p-4 bg-white text-center">
+                    <p className="font-medium text-sm sm:text-base mb-1">{lens.name}</p>
+                    {lens.description && (
+                      <p className="text-xs text-muted-foreground mb-1 sm:mb-2 line-clamp-2">{lens.description}</p>
+                    )}
+                    {lens.priceAdjustment > 0 && (
+                      <p className="text-orange-600 font-bold text-sm sm:text-base">
+                        Rs {lens.priceAdjustment.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+              </Label>
             ))}
-          </RadioGroup>
-        </Card>
-      )}
+          </div>
+        </RadioGroup>
+      </div>
 
       {/* Step 3: Enter Eyesight Numbers */}
       {hasEyesight && selectedLensType && (
-        <Card className="p-6">
-          <h3 className="font-semibold text-lg mb-4">Step 3: Enter Eyesight Numbers</h3>
+        <div>
+          <h3 className="font-semibold text-lg mb-4">Enter Eyesight Number</h3>
           
           <RadioGroup value={prescriptionType} onValueChange={(v) => handlePrescriptionTypeChange(v as 'upload' | 'manual')}>
-            <div className="flex items-center space-x-2 mb-4">
-              <RadioGroupItem value="upload" id="upload" />
-              <Label htmlFor="upload">Upload Prescription</Label>
-            </div>
-            <div className="flex items-center space-x-2 mb-4">
-              <RadioGroupItem value="manual" id="manual" />
-              <Label htmlFor="manual">Enter Manually</Label>
+            <div className="space-y-3 mb-6">
+              <Label 
+                htmlFor="upload" 
+                className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:border-gray-400 ${
+                  prescriptionType === 'upload' ? 'border-gray-900 bg-gray-50' : 'border-gray-300'
+                }`}
+              >
+                <RadioGroupItem value="upload" id="upload" />
+                <span className="font-medium">Upload Prescription Image</span>
+              </Label>
+              <Label 
+                htmlFor="manual" 
+                className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:border-gray-400 ${
+                  prescriptionType === 'manual' ? 'border-gray-900 bg-gray-50' : 'border-gray-300'
+                }`}
+              >
+                <RadioGroupItem value="manual" id="manual" />
+                <span className="font-medium">Enter Eyesight Number</span>
+              </Label>
             </div>
           </RadioGroup>
 
-          {prescriptionType === 'upload' ? (
-            <div className="space-y-4">
+          <div className="mt-6">
+            {/* Upload mode */}
+            <div className={prescriptionType === 'upload' ? 'space-y-4' : 'hidden'}>
               {!prescriptionFile ? (
                 <div 
                   className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
@@ -298,10 +337,11 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Right Eye */}
-              <div>
+
+            {/* Manual mode */}
+            <div className={prescriptionType === 'manual' ? 'space-y-6' : 'hidden'}>
+                {/* Right Eye */}
+                <div>
                 <h4 className="font-medium mb-3">Right Eye (OD)</h4>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <div>
@@ -310,7 +350,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="right-sph"
                       placeholder="0.00"
                       value={rightEye.sph}
-                      onChange={(e) => setRightEye({...rightEye, sph: e.target.value})}
+                      onChange={(e) => {
+                        const newRightEye = { ...rightEye, sph: e.target.value };
+                        setHasEyesight(true);
+                        setRightEye(newRightEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye: newRightEye, leftEye }
+                        });
+                      }}
                     />
                   </div>
                   <div>
@@ -319,7 +369,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="right-cyl"
                       placeholder="0.00"
                       value={rightEye.cyl}
-                      onChange={(e) => setRightEye({...rightEye, cyl: e.target.value})}
+                      onChange={(e) => {
+                        const newRightEye = { ...rightEye, cyl: e.target.value };
+                        setHasEyesight(true);
+                        setRightEye(newRightEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye: newRightEye, leftEye }
+                        });
+                      }}
                     />
                   </div>
                   <div>
@@ -328,7 +388,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="right-axis"
                       placeholder="0"
                       value={rightEye.axis}
-                      onChange={(e) => setRightEye({...rightEye, axis: e.target.value})}
+                      onChange={(e) => {
+                        const newRightEye = { ...rightEye, axis: e.target.value };
+                        setHasEyesight(true);
+                        setRightEye(newRightEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye: newRightEye, leftEye }
+                        });
+                      }}
                     />
                   </div>
                   <div>
@@ -337,7 +407,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="right-add"
                       placeholder="0.00"
                       value={rightEye.add}
-                      onChange={(e) => setRightEye({...rightEye, add: e.target.value})}
+                      onChange={(e) => {
+                        const newRightEye = { ...rightEye, add: e.target.value };
+                        setHasEyesight(true);
+                        setRightEye(newRightEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye: newRightEye, leftEye }
+                        });
+                      }}
                     />
                   </div>
                   <div>
@@ -346,7 +426,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="right-pd"
                       placeholder="0.0"
                       value={rightEye.pd}
-                      onChange={(e) => setRightEye({...rightEye, pd: e.target.value})}
+                      onChange={(e) => {
+                        const newRightEye = { ...rightEye, pd: e.target.value };
+                        setHasEyesight(true);
+                        setRightEye(newRightEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye: newRightEye, leftEye }
+                        });
+                      }}
                     />
                   </div>
                 </div>
@@ -362,7 +452,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="left-sph"
                       placeholder="0.00"
                       value={leftEye.sph}
-                      onChange={(e) => setLeftEye({...leftEye, sph: e.target.value})}
+                      onChange={(e) => {
+                        const newLeftEye = { ...leftEye, sph: e.target.value };
+                        setHasEyesight(true);
+                        setLeftEye(newLeftEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                        });
+                      }}
                     />
                   </div>
                   <div>
@@ -371,7 +471,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="left-cyl"
                       placeholder="0.00"
                       value={leftEye.cyl}
-                      onChange={(e) => setLeftEye({...leftEye, cyl: e.target.value})}
+                      onChange={(e) => {
+                        const newLeftEye = { ...leftEye, cyl: e.target.value };
+                        setHasEyesight(true);
+                        setLeftEye(newLeftEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                        });
+                      }}
                     />
                   </div>
                   <div>
@@ -380,7 +490,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="left-axis"
                       placeholder="0"
                       value={leftEye.axis}
-                      onChange={(e) => setLeftEye({...leftEye, axis: e.target.value})}
+                      onChange={(e) => {
+                        const newLeftEye = { ...leftEye, axis: e.target.value };
+                        setHasEyesight(true);
+                        setLeftEye(newLeftEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                        });
+                      }}
                     />
                   </div>
                   <div>
@@ -389,7 +509,17 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="left-add"
                       placeholder="0.00"
                       value={leftEye.add}
-                      onChange={(e) => setLeftEye({...leftEye, add: e.target.value})}
+                      onChange={(e) => {
+                        const newLeftEye = { ...leftEye, add: e.target.value };
+                        setHasEyesight(true);
+                        setLeftEye(newLeftEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                        });
+                      }}
                     />
                   </div>
                   <div>
@@ -398,14 +528,24 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
                       id="left-pd"
                       placeholder="0.0"
                       value={leftEye.pd}
-                      onChange={(e) => setLeftEye({...leftEye, pd: e.target.value})}
+                      onChange={(e) => {
+                        const newLeftEye = { ...leftEye, pd: e.target.value };
+                        setHasEyesight(true);
+                        setLeftEye(newLeftEye);
+                        onLensConfigChange({
+                          hasEyesight: true,
+                          lensTypeId: selectedLensType,
+                          prescriptionType: 'manual',
+                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                        });
+                      }}
                     />
                   </div>
                 </div>
               </div>
             </div>
-          )}
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );
