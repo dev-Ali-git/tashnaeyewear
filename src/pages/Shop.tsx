@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Filter, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import ProductCard from "@/components/ProductCard";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -72,20 +72,6 @@ const Shop = () => {
   const availableColors = ["Black", "Brown", "Gold", "Silver", "Tortoise", "Transparent", "Blue", "Green"];
   const availableSizes = ["Small", "Medium", "Large", "Extra Large"];
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [category, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy]);
-
-  useEffect(() => {
-    if (categories.length > 0 || !category) {
-      fetchProducts();
-    }
-  }, [category, categories, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy, currentPage]);
-
   const fetchCategories = async () => {
     const { data } = await supabase
       .from("categories")
@@ -94,7 +80,7 @@ const Shop = () => {
     if (data) setCategories(data);
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     
     // Build base query for filtering
@@ -164,7 +150,21 @@ const Shop = () => {
 
     setProducts(filteredProducts);
     setLoading(false);
-  };
+  }, [category, categories, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [category, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy]);
+
+  useEffect(() => {
+    if (categories.length > 0 || !category) {
+      fetchProducts();
+    }
+  }, [category, categories, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy, currentPage, fetchProducts]);
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategories(prev =>
@@ -519,10 +519,8 @@ const Shop = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[300px] overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Filters</SheetTitle>
-              </SheetHeader>
-              <div className="mt-6">
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Filters</h3>
                 <FilterPanel />
               </div>
             </SheetContent>
