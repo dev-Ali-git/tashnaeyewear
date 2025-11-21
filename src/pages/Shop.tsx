@@ -508,9 +508,8 @@ const Shop = () => {
           </div>
         )}
 
-      <div className="container mx-auto px-4 pb-6">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+          <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
           {/* Filter Button (for all views) */}
           <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
             <SheetTrigger asChild>
