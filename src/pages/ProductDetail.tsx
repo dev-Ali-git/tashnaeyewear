@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { ShoppingCart, Heart, Truck, Shield, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 
 interface Product {
   id: string;
@@ -47,6 +49,8 @@ const ProductDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addToCart } = useCart();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -165,6 +169,27 @@ const ProductDetail = () => {
 
   const inStock = variants.some(v => (v.stock || 0) > 0);
 
+  const handleAddToCart = async () => {
+    if (!product) return;
+    
+    await addToCart(
+      product.id,
+      selectedVariant || undefined,
+      lensConfig.hasEyesight && lensConfig.lensTypeId ? lensConfig.lensTypeId : undefined,
+      quantity
+    );
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!product) return;
+    
+    if (isInWishlist(product.id)) {
+      await removeFromWishlist(product.id);
+    } else {
+      await addToWishlist(product.id);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -281,12 +306,16 @@ const ProductDetail = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-3 mb-6">
-                <Button size="lg" className="flex-1">
+                <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={!inStock}>
                   <ShoppingCart className="mr-2 h-5 w-5" />
                   Add to Cart
                 </Button>
-                <Button size="lg" variant="outline">
-                  <Heart className="h-5 w-5" />
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={handleWishlistToggle}
+                >
+                  <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
                 </Button>
               </div>
 
@@ -331,7 +360,7 @@ const ProductDetail = () => {
                 <div className="text-sm text-muted-foreground">Total Price</div>
                 <div className="font-bold text-lg">Rs. {calculateTotalPrice().toLocaleString()}</div>
               </div>
-              <Button size="lg" className="flex-1">
+              <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={!inStock}>
                 <ShoppingCart className="mr-2 h-5 w-5" />
                 Add to Cart
               </Button>
