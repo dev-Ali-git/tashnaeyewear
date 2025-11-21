@@ -109,7 +109,7 @@ const Index = () => {
                   Premium eyewear designed for your unique vision and style
                 </p>
                 <Button size="lg" asChild className="bg-accent hover:bg-accent/90">
-                  <Link to="/shop/frames">
+                  <Link to="/shop">
                     Shop Collection
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>

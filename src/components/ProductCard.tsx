@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +21,34 @@ const ProductCard = ({ id, title, price, image, slug, stock = 0 }: ProductCardPr
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const inWishlist = isInWishlist(id);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+  // Stock status logic
+  const isOutOfStock = stock === 0;
+  const isLowStock = stock > 0 && stock <= 5;
+  const isInStock = stock > 5;
+
+  const getStockBadge = () => {
+    if (isOutOfStock) {
+      return <Badge variant="destructive" className="absolute top-2 right-2">Out of Stock</Badge>;
+    }
+    if (isLowStock) {
+      return <Badge variant="secondary" className="absolute top-2 right-2 bg-orange-500 text-white">Low Stock ({stock})</Badge>;
+    }
+    if (isInStock) {
+      return <Badge variant="secondary" className="absolute top-2 right-2 bg-green-500 text-white">In Stock</Badge>;
+    }
+  };
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
-    await addToCart(id);
+    if (isAddingToCart) return;
+    setIsAddingToCart(true);
+    try {
+      await addToCart(id);
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {
@@ -39,21 +64,12 @@ const ProductCard = ({ id, title, price, image, slug, stock = 0 }: ProductCardPr
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
       <Link to={`/product/${slug}`} className="block">
         <div className="aspect-square overflow-hidden bg-secondary relative">
+          {getStockBadge()}
           <img
             src={image}
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          {stock <= 0 && (
-            <Badge variant="destructive" className="absolute top-2 right-2">
-              Out of Stock
-            </Badge>
-          )}
-          {stock > 0 && stock <= 5 && (
-            <Badge variant="secondary" className="absolute top-2 right-2">
-              Low Stock
-            </Badge>
-          )}
         </div>
       </Link>
       
@@ -67,7 +83,6 @@ const ProductCard = ({ id, title, price, image, slug, stock = 0 }: ProductCardPr
         <div className="flex items-center justify-between">
           <div>
             <p className="font-bold text-lg">Rs. {price.toLocaleString()}</p>
-            {stock > 0 && <p className="text-xs text-muted-foreground">{stock} in stock</p>}
           </div>
           
           <div className="flex gap-2">
@@ -84,9 +99,14 @@ const ProductCard = ({ id, title, price, image, slug, stock = 0 }: ProductCardPr
               size="icon"
               className="h-8 w-8"
               onClick={handleAddToCart}
-              disabled={stock <= 0}
+              disabled={isAddingToCart || isOutOfStock}
+              title={isOutOfStock ? "Out of stock" : "Add to cart"}
             >
-              <ShoppingCart className="h-4 w-4" />
+              {isAddingToCart ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShoppingCart className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>

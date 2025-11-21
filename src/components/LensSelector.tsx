@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload } from "lucide-react";
+import { Upload, X, FileImage } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface LensType {
   id: string;
@@ -39,9 +40,13 @@ interface EyeData {
 }
 
 const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [hasEyesight, setHasEyesight] = useState<boolean>(false);
   const [selectedLensType, setSelectedLensType] = useState<string>("");
   const [prescriptionType, setPrescriptionType] = useState<'upload' | 'manual'>('upload');
+  const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
+  const [prescriptionPreview, setPrescriptionPreview] = useState<string | null>(null);
   const [rightEye, setRightEye] = useState<EyeData>({
     sph: '', cyl: '', axis: '', add: '', pd: ''
   });
@@ -55,7 +60,8 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
     onLensConfigChange({
       hasEyesight: hasEye,
       lensTypeId: hasEye ? selectedLensType : undefined,
-      prescriptionType: hasEye ? prescriptionType : undefined
+      prescriptionType: hasEye ? prescriptionType : undefined,
+      prescriptionImage: hasEye && prescriptionType === 'upload' ? prescriptionFile || undefined : undefined
     });
   };
 
@@ -64,7 +70,83 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
     onLensConfigChange({
       hasEyesight,
       lensTypeId,
-      prescriptionType
+      prescriptionType,
+      prescriptionImage: prescriptionType === 'upload' ? prescriptionFile || undefined : undefined
+    });
+  };
+
+  const handlePrescriptionTypeChange = (type: 'upload' | 'manual') => {
+    setPrescriptionType(type);
+    onLensConfigChange({
+      hasEyesight,
+      lensTypeId: selectedLensType,
+      prescriptionType: type,
+      prescriptionImage: type === 'upload' ? prescriptionFile || undefined : undefined
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPG, PNG, or PDF file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setPrescriptionFile(file);
+
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPrescriptionPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPrescriptionPreview(null);
+    }
+
+    onLensConfigChange({
+      hasEyesight,
+      lensTypeId: selectedLensType,
+      prescriptionType: 'upload',
+      prescriptionImage: file
+    });
+
+    toast({
+      title: "Prescription uploaded",
+      description: `${file.name} has been uploaded successfully`
+    });
+  };
+
+  const handleRemoveFile = () => {
+    setPrescriptionFile(null);
+    setPrescriptionPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    onLensConfigChange({
+      hasEyesight,
+      lensTypeId: selectedLensType,
+      prescriptionType: 'upload',
+      prescriptionImage: undefined
     });
   };
 
@@ -127,7 +209,7 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
         <Card className="p-6">
           <h3 className="font-semibold text-lg mb-4">Step 3: Enter Eyesight Numbers</h3>
           
-          <RadioGroup value={prescriptionType} onValueChange={(v) => setPrescriptionType(v as 'upload' | 'manual')}>
+          <RadioGroup value={prescriptionType} onValueChange={(v) => handlePrescriptionTypeChange(v as 'upload' | 'manual')}>
             <div className="flex items-center space-x-2 mb-4">
               <RadioGroupItem value="upload" id="upload" />
               <Label htmlFor="upload">Upload Prescription</Label>
@@ -139,15 +221,82 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
           </RadioGroup>
 
           {prescriptionType === 'upload' ? (
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mb-4">
-                Upload your prescription (JPG, PNG, or PDF)
-              </p>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Choose File
-              </Button>
+            <div className="space-y-4">
+              {!prescriptionFile ? (
+                <div 
+                  className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Upload your prescription image
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Supported formats: JPG, PNG, PDF (max 5MB)
+                  </p>
+                  <Button type="button" variant="outline" onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Choose File
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,application/pdf"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+              ) : (
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <FileImage className="h-8 w-8 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm">{prescriptionFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(prescriptionFile.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRemoveFile}
+                      className="h-8 w-8"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {prescriptionPreview && (
+                    <img 
+                      src={prescriptionPreview} 
+                      alt="Prescription preview" 
+                      className="w-full rounded-md border"
+                    />
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-3"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Change File
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,application/pdf"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-6">

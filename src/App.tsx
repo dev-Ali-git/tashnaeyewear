@@ -21,6 +21,7 @@ import Orders from "./pages/admin/Orders";
 import Customers from "./pages/admin/Customers";
 import Analytics from "./pages/admin/Analytics";
 import LensTypes from "./pages/admin/LensTypes";
+import Categories from "./pages/admin/Categories";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/products" element={<Products />} />
               <Route path="/admin/products/:productId/variants" element={<ProductVariants />} />
+              <Route path="/admin/categories" element={<Categories />} />
               <Route path="/admin/orders" element={<Orders />} />
               <Route path="/admin/customers" element={<Customers />} />
               <Route path="/admin/analytics" element={<Analytics />} />

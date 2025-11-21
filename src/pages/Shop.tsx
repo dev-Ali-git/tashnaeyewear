@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Filter, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import ProductCard from "@/components/ProductCard";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -33,12 +34,18 @@ interface Product {
   base_price: number;
   images: string[];
   category_id: string;
+  product_variants?: Array<{
+    id: string;
+    stock: number;
+  }>;
 }
 
 interface Category {
   id: string;
   name: string;
   slug: string;
+  description: string | null;
+  image_url: string | null;
 }
 
 const Shop = () => {
@@ -74,8 +81,10 @@ const Shop = () => {
   }, [category, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [category, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy, currentPage]);
+    if (categories.length > 0 || !category) {
+      fetchProducts();
+    }
+  }, [category, categories, selectedCategories, priceRange, selectedColors, selectedSizes, sortBy, currentPage]);
 
   const fetchCategories = async () => {
     const { data } = await supabase
@@ -91,19 +100,17 @@ const Shop = () => {
     // Build base query for filtering
     let baseQuery = supabase
       .from("products")
-      .select("*", { count: 'exact' })
+      .select("*, product_variants(id, stock)", { count: 'exact' })
       .eq("is_active", true);
 
-    // Category filter from URL param
+    // Category filter from URL param takes priority
     if (category) {
       const categoryData = categories.find(c => c.slug === category);
       if (categoryData) {
         baseQuery = baseQuery.eq("category_id", categoryData.id);
       }
-    }
-
-    // Category filter from checkboxes
-    if (selectedCategories.length > 0) {
+    } else if (selectedCategories.length > 0) {
+      // Category filter from checkboxes only if no URL category
       baseQuery = baseQuery.in("category_id", selectedCategories);
     }
 
@@ -272,6 +279,7 @@ const Shop = () => {
   };
 
   const currentCategory = categories.find(c => c.slug === category);
+  const isCategoryView = !!currentCategory;
   const hasActiveFilters = selectedCategories.length > 0 || selectedColors.length > 0 || selectedSizes.length > 0 || priceRange[0] > 0 || priceRange[1] < 50000;
 
   const FilterPanel = () => (
@@ -289,7 +297,7 @@ const Shop = () => {
       )}
 
       {/* Categories */}
-      {!category && (
+      {!isCategoryView && (
         <div>
           <h3 className="font-semibold mb-3">Categories</h3>
           <div className="space-y-2">
@@ -359,44 +367,150 @@ const Shop = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6">
-        {/* Breadcrumb */}
-        <Breadcrumb className="mb-6">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">Home</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/shop">Shop</BreadcrumbLink>
-            </BreadcrumbItem>
-            {currentCategory && (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{currentCategory.name}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </>
-            )}
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">
-            {currentCategory ? currentCategory.name : "All Products"}
-          </h1>
-          <p className="text-muted-foreground">
-            {totalProducts} {totalProducts === 1 ? "product" : "products"} found
-          </p>
+      {/* Category Hero Banner (only when viewing a specific category) */}
+      {isCategoryView && currentCategory && (
+        <div className="relative h-64 md:h-80 w-full mb-10 overflow-hidden">
+          <img
+            src={currentCategory.image_url || "/placeholder.svg"}
+            alt={currentCategory.name}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/40" />
+          <div className="relative h-full flex items-center">
+            <div className="container mx-auto px-4">
+              <Breadcrumb className="mb-4">
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink href="/shop">Shop</BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{currentCategory.name}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+                {currentCategory.name}
+              </h1>
+              {currentCategory.description && (
+                <p className="max-w-2xl text-muted-foreground mb-4 text-sm md:text-base leading-relaxed">
+                  {currentCategory.description}
+                </p>
+              )}
+              
+              {/* Category Navigation */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Link
+                  to="/shop"
+                  className="px-4 py-2 rounded-full text-sm font-medium transition-all bg-background/60 hover:bg-background/80 border border-border"
+                >
+                  All Products
+                </Link>
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={`/shop/${cat.slug}`}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-sm font-medium transition-all",
+                      cat.id === currentCategory.id
+                        ? "bg-accent text-accent-foreground shadow-md"
+                        : "bg-background/60 hover:bg-background/80 border border-border"
+                    )}
+                  >
+                    {cat.name}
+                  </Link>
+                ))}
+              </div>
+              
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center rounded-full bg-accent/15 text-accent px-4 py-1 text-sm font-medium">
+                  {totalProducts} {totalProducts === 1 ? "Product" : "Products"}
+                </span>
+                {hasActiveFilters && (
+                  <Button size="sm" variant="outline" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className="container mx-auto px-4 py-6">
+        {/* Default Header (only when viewing all products) */}
+        {!isCategoryView && (
+          <div className="relative h-64 md:h-80 w-full -mx-4 mb-10 overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=2000&q=80"
+              alt="All Products"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/40" />
+            <div className="relative h-full flex items-center">
+              <div className="container mx-auto px-4">
+                <Breadcrumb className="mb-4">
+                  <BreadcrumbList>
+                    <BreadcrumbItem>
+                      <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>Shop</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </BreadcrumbList>
+                </Breadcrumb>
+                <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+                  All Products
+                </h1>
+                <p className="max-w-2xl text-muted-foreground mb-4 text-sm md:text-base leading-relaxed">
+                  Explore our complete collection of premium eyewear
+                </p>
+                
+                {/* Category Navigation */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Link
+                    to="/shop"
+                    className="px-4 py-2 rounded-full text-sm font-medium transition-all bg-accent text-accent-foreground shadow-md"
+                  >
+                    All Products
+                  </Link>
+                  {categories.map((cat) => (
+                    <Link
+                      key={cat.id}
+                      to={`/shop/${cat.slug}`}
+                      className="px-4 py-2 rounded-full text-sm font-medium transition-all bg-background/60 hover:bg-background/80 border border-border"
+                    >
+                      {cat.name}
+                    </Link>
+                  ))}
+                </div>
+                
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="inline-flex items-center rounded-full bg-accent/15 text-accent px-4 py-1 text-sm font-medium">
+                    {totalProducts} {totalProducts === 1 ? "Product" : "Products"}
+                  </span>
+                  {hasActiveFilters && (
+                    <Button size="sm" variant="outline" onClick={clearFilters}>
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-6 gap-4">
-          {/* Mobile Filter Button */}
+        <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+          {/* Filter Button (for all views) */}
           <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="lg:hidden">
+              <Button variant="outline">
                 <Filter className="h-4 w-4 mr-2" />
                 Filters
                 {hasActiveFilters && (
@@ -429,19 +543,12 @@ const Shop = () => {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Desktop Filters Sidebar */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-24">
-              <FilterPanel />
-            </div>
-          </aside>
-
+        <div className="grid grid-cols-1 gap-8">
           {/* Products Grid */}
-          <div className="lg:col-span-3">
+          <div>
             {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {[...Array(6)].map((_, i) => (
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+                {[...Array(8)].map((_, i) => (
                   <div key={i} className="animate-pulse">
                     <div className="aspect-square bg-muted rounded-lg mb-4" />
                     <div className="h-4 bg-muted rounded mb-2" />
@@ -460,17 +567,21 @@ const Shop = () => {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      id={product.id}
-                      title={product.title}
-                      price={product.base_price}
-                      image={product.images?.[0] || "/placeholder.svg"}
-                      slug={product.slug}
-                    />
-                  ))}
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {products.map((product) => {
+                    const totalStock = product.product_variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+                    return (
+                      <ProductCard
+                        key={product.id}
+                        id={product.id}
+                        title={product.title}
+                        price={product.base_price}
+                        image={product.images?.[0] || "/placeholder.svg"}
+                        slug={product.slug}
+                        stock={totalStock}
+                      />
+                    );
+                  })}
                 </div>
 
                 {/* Pagination */}

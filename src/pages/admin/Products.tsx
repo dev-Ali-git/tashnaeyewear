@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, Loader2, Package } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Package, Upload, X, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Product {
@@ -34,15 +34,26 @@ interface Category {
 
 const ProductsManagement = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (editingProduct) {
+      setUploadedImages(editingProduct.images || []);
+    } else {
+      setUploadedImages([]);
+    }
+  }, [editingProduct]);
 
   const fetchData = async () => {
     const [productsRes, categoriesRes] = await Promise.all([
@@ -53,6 +64,71 @@ const ProductsManagement = () => {
     if (productsRes.data) setProducts(productsRes.data as Product[]);
     if (categoriesRes.data) setCategories(categoriesRes.data);
     setLoading(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    const newImageUrls: string[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          toast.error(`${file.name} is not an image file`);
+          continue;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 5MB)`);
+          continue;
+        }
+
+        // Create unique filename
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        // Upload to Supabase Storage
+        const { error: uploadError, data } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          toast.error(`Failed to upload ${file.name}`);
+          console.error(uploadError);
+          continue;
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+
+        newImageUrls.push(publicUrl);
+      }
+
+      setUploadedImages([...uploadedImages, ...newImageUrls]);
+      toast.success(`${newImageUrls.length} image(s) uploaded successfully`);
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload images');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const newImages = uploadedImages.filter((_, i) => i !== index);
+    setUploadedImages(newImages);
   };
 
   const saveProduct = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -69,7 +145,7 @@ const ProductsManagement = () => {
       is_active: formData.get("is_active") === "on",
       is_featured: formData.get("is_featured") === "on",
       has_lens_options: formData.get("has_lens_options") === "on",
-      images: (formData.get("images") as string).split(",").map(url => url.trim()).filter(Boolean)
+      images: uploadedImages
     };
 
     if (editingProduct) {
@@ -180,14 +256,67 @@ const ProductsManagement = () => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="images">Image URLs (comma-separated)</Label>
-                <Textarea
-                  id="images"
-                  name="images"
-                  defaultValue={editingProduct?.images.join(", ")}
-                  placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                  rows={3}
-                />
+                <Label>Product Images</Label>
+                <div className="space-y-3 mt-2">
+                  {/* Upload Button */}
+                  <div 
+                    className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Click to upload product images
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      JPG, PNG (max 5MB each)
+                    </p>
+                    {uploading && (
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Uploading...</span>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+
+                  {/* Image Preview Grid */}
+                  {uploadedImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-3">
+                      {uploadedImages.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Product ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleRemoveImage(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          {index === 0 && (
+                            <Badge className="absolute bottom-1 left-1 text-xs">Main</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">
+                    First image will be used as the main product image
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Switch

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ShoppingCart, Heart, Truck, Shield, RotateCcw } from "lucide-react";
+import { ShoppingCart, Heart, Truck, Shield, RotateCcw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
@@ -63,6 +63,7 @@ const ProductDetail = () => {
   const [lensTypes, setLensTypes] = useState<LensType[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -167,17 +168,38 @@ const ProductDetail = () => {
     return ["/placeholder.svg"];
   };
 
-  const inStock = variants.some(v => (v.stock || 0) > 0);
+  // Calculate total and selected variant stock
+  const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+  const selectedVariantData = variants.find(v => v.id === selectedVariant);
+  const variantStock = selectedVariantData?.stock || 0;
+  const inStock = totalStock > 0;
+  const isOutOfStock = variantStock === 0;
+  const isLowStock = variantStock > 0 && variantStock <= 5;
+  
+  const getStockBadge = () => {
+    if (isOutOfStock) {
+      return <Badge variant="destructive">Out of Stock</Badge>;
+    }
+    if (isLowStock) {
+      return <Badge className="bg-orange-500 text-white">Low Stock ({variantStock} left)</Badge>;
+    }
+    return <Badge className="bg-green-500 text-white">In Stock</Badge>;
+  };
 
   const handleAddToCart = async () => {
-    if (!product) return;
+    if (!product || isAddingToCart) return;
     
-    await addToCart(
-      product.id,
-      selectedVariant || undefined,
-      lensConfig.hasEyesight && lensConfig.lensTypeId ? lensConfig.lensTypeId : undefined,
-      quantity
-    );
+    setIsAddingToCart(true);
+    try {
+      await addToCart(
+        product.id,
+        selectedVariant || undefined,
+        lensConfig.hasEyesight && lensConfig.lensTypeId ? lensConfig.lensTypeId : undefined,
+        quantity
+      );
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleWishlistToggle = async () => {
@@ -248,11 +270,7 @@ const ProductDetail = () => {
               
               <div className="flex items-center gap-4 mb-6">
                 <span className="text-3xl font-bold">Rs. {calculateTotalPrice().toLocaleString()}</span>
-                {inStock ? (
-                  <Badge variant="outline" className="text-green-600 border-green-600">In Stock</Badge>
-                ) : (
-                  <Badge variant="outline" className="text-red-600 border-red-600">Out of Stock</Badge>
-                )}
+                {getStockBadge()}
               </div>
 
               <p className="text-muted-foreground mb-6">{product.description}</p>
@@ -264,20 +282,36 @@ const ProductDetail = () => {
                 <div className="mb-6">
                   <label className="font-semibold mb-3 block">Select Color & Material</label>
                   <div className="grid grid-cols-3 gap-3">
-                    {variants.map((variant) => (
-                      <button
-                        key={variant.id}
-                        onClick={() => setSelectedVariant(variant.id)}
-                        className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
-                          selectedVariant === variant.id
-                            ? 'border-accent bg-accent/10'
-                            : 'border-border hover:border-accent/50'
-                        }`}
-                      >
-                        <div>{variant.color}</div>
-                        <div className="text-xs text-muted-foreground">{variant.material}</div>
-                      </button>
-                    ))}
+                    {variants.map((variant) => {
+                      const variantStockCount = variant.stock || 0;
+                      const isVariantOutOfStock = variantStockCount === 0;
+                      return (
+                        <button
+                          key={variant.id}
+                          onClick={() => setSelectedVariant(variant.id)}
+                          disabled={isVariantOutOfStock}
+                          className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                            selectedVariant === variant.id
+                              ? 'border-accent bg-accent/10'
+                              : isVariantOutOfStock
+                              ? 'border-border opacity-50 cursor-not-allowed'
+                              : 'border-border hover:border-accent/50'
+                          }`}
+                        >
+                          <div>{variant.color}</div>
+                          <div className="text-xs text-muted-foreground">{variant.material}</div>
+                          <div className="text-xs mt-1">
+                            {isVariantOutOfStock ? (
+                              <span className="text-red-500">Out of stock</span>
+                            ) : variantStockCount <= 5 ? (
+                              <span className="text-orange-500">{variantStockCount} left</span>
+                            ) : (
+                              <span className="text-green-500">In stock</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -306,9 +340,18 @@ const ProductDetail = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-3 mb-6">
-                <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={!inStock}>
-                  <ShoppingCart className="mr-2 h-5 w-5" />
-                  Add to Cart
+                <Button 
+                  size="lg" 
+                  className="flex-1" 
+                  onClick={handleAddToCart} 
+                  disabled={isOutOfStock || isAddingToCart}
+                >
+                  {isAddingToCart ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                  )}
+                  {isOutOfStock ? "Out of Stock" : isAddingToCart ? "Adding..." : "Add to Cart"}
                 </Button>
                 <Button 
                   size="lg" 
@@ -360,9 +403,13 @@ const ProductDetail = () => {
                 <div className="text-sm text-muted-foreground">Total Price</div>
                 <div className="font-bold text-lg">Rs. {calculateTotalPrice().toLocaleString()}</div>
               </div>
-              <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={!inStock}>
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Add to Cart
+              <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={!inStock || isAddingToCart}>
+                {isAddingToCart ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <ShoppingCart className="mr-2 h-5 w-5" />
+                )}
+                {isAddingToCart ? "Adding..." : "Add to Cart"}
               </Button>
             </div>
           </div>

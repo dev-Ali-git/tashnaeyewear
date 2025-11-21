@@ -11,6 +11,7 @@ import OrdersManagement from "./Orders";
 import CustomersManagement from "./Customers";
 import AnalyticsDashboard from "./Analytics";
 import LensTypesManagement from "./LensTypes";
+import CategoriesManagement from "./Categories";
 
 interface Stats {
   totalOrders: number;
@@ -91,6 +92,7 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="lens-types">Lens Types</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
@@ -143,6 +145,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="products">
             <ProductsManagement />
+          </TabsContent>
+
+          <TabsContent value="categories">
+            <CategoriesManagement />
           </TabsContent>
 
           <TabsContent value="lens-types">

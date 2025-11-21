@@ -1,23 +1,33 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ShoppingCart, User, Search, Menu, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { Badge } from "@/components/ui/badge";
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 const Header = () => {
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   const { cartCount } = useCart();
   const { wishlistItems } = useWishlist();
 
   useEffect(() => {
     checkUser();
+    fetchCategories();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -35,6 +45,14 @@ const Header = () => {
     if (user) {
       checkAdminRole(user.id);
     }
+  };
+
+  const fetchCategories = async () => {
+    const { data } = await supabase
+      .from("categories")
+      .select("id, name, slug")
+      .order("display_order", { ascending: true });
+    if (data) setCategories(data);
   };
 
   const checkAdminRole = async (userId: string) => {
@@ -140,18 +158,27 @@ const Header = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center justify-center gap-8 pb-4">
-          <Link to="/shop/frames" className="text-sm font-medium hover:text-accent transition-colors">
-            Frames
+          <Link
+            to="/shop"
+            className={cn(
+              "text-sm font-medium hover:text-accent transition-colors",
+              location.pathname === "/shop" && "text-accent font-semibold"
+            )}
+          >
+            All Products
           </Link>
-          <Link to="/shop/sunglasses" className="text-sm font-medium hover:text-accent transition-colors">
-            Sunglasses
-          </Link>
-          <Link to="/shop/protection" className="text-sm font-medium hover:text-accent transition-colors">
-            Protection Glasses
-          </Link>
-          <Link to="/shop/contacts" className="text-sm font-medium hover:text-accent transition-colors">
-            Contact Lenses
-          </Link>
+          {categories.map((category) => (
+            <Link
+              key={category.id}
+              to={`/shop/${category.slug}`}
+              className={cn(
+                "text-sm font-medium hover:text-accent transition-colors",
+                location.pathname === `/shop/${category.slug}` && "text-accent font-semibold"
+              )}
+            >
+              {category.name}
+            </Link>
+          ))}
           <Link to="/about" className="text-sm font-medium hover:text-accent transition-colors">
             About Us
           </Link>
@@ -160,19 +187,30 @@ const Header = () => {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <nav className="md:hidden py-4 border-t border-border space-y-2">
-            <Link to="/shop/frames" className="block py-2 text-sm font-medium">
-              Frames
+            <Link
+              to="/shop"
+              className={cn(
+                "block py-2 text-sm font-medium",
+                location.pathname === "/shop" && "text-accent font-semibold"
+              )}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              All Products
             </Link>
-            <Link to="/shop/sunglasses" className="block py-2 text-sm font-medium">
-              Sunglasses
-            </Link>
-            <Link to="/shop/protection" className="block py-2 text-sm font-medium">
-              Protection Glasses
-            </Link>
-            <Link to="/shop/contacts" className="block py-2 text-sm font-medium">
-              Contact Lenses
-            </Link>
-            <Link to="/about" className="block py-2 text-sm font-medium">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                to={`/shop/${category.slug}`}
+                className={cn(
+                  "block py-2 text-sm font-medium",
+                  location.pathname === `/shop/${category.slug}` && "text-accent font-semibold"
+                )}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {category.name}
+              </Link>
+            ))}
+            <Link to="/about" className="block py-2 text-sm font-medium" onClick={() => setIsMenuOpen(false)}>
               About Us
             </Link>
           </nav>
