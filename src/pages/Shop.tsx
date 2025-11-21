@@ -444,70 +444,70 @@ const Shop = () => {
         </div>
       )}
 
-      <div className="container mx-auto px-4 py-6">
-        {/* Default Header (only when viewing all products) */}
-        {!isCategoryView && (
-          <div className="relative h-64 md:h-80 w-full -mx-4 mb-10 overflow-hidden">
-            <img
-              src="https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=2000&q=80"
-              alt="All Products"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/40" />
-            <div className="relative h-full flex items-center">
-              <div className="container mx-auto px-4">
-                <Breadcrumb className="mb-4">
-                  <BreadcrumbList>
-                    <BreadcrumbItem>
-                      <BreadcrumbLink href="/">Home</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>Shop</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </BreadcrumbList>
-                </Breadcrumb>
-                <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+      {/* Default Header (only when viewing all products) */}
+      {!isCategoryView && (
+        <div className="relative h-64 md:h-80 w-full mb-10 overflow-hidden">
+          <img
+            src="https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=2000&q=80"
+            alt="All Products"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/40" />
+          <div className="relative h-full flex items-center">
+            <div className="container mx-auto px-4">
+              <Breadcrumb className="mb-4">
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>Shop</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+                All Products
+              </h1>
+              <p className="max-w-2xl text-muted-foreground mb-4 text-sm md:text-base leading-relaxed">
+                Explore our complete collection of premium eyewear
+              </p>
+              
+              {/* Category Navigation */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Link
+                  to="/shop"
+                  className="px-4 py-2 rounded-full text-sm font-medium transition-all bg-accent text-accent-foreground shadow-md"
+                >
                   All Products
-                </h1>
-                <p className="max-w-2xl text-muted-foreground mb-4 text-sm md:text-base leading-relaxed">
-                  Explore our complete collection of premium eyewear
-                </p>
-                
-                {/* Category Navigation */}
-                <div className="flex flex-wrap gap-2 mb-4">
+                </Link>
+                {categories.map((cat) => (
                   <Link
-                    to="/shop"
-                    className="px-4 py-2 rounded-full text-sm font-medium transition-all bg-accent text-accent-foreground shadow-md"
+                    key={cat.id}
+                    to={`/shop/${cat.slug}`}
+                    className="px-4 py-2 rounded-full text-sm font-medium transition-all bg-background/60 hover:bg-background/80 border border-border"
                   >
-                    All Products
+                    {cat.name}
                   </Link>
-                  {categories.map((cat) => (
-                    <Link
-                      key={cat.id}
-                      to={`/shop/${cat.slug}`}
-                      className="px-4 py-2 rounded-full text-sm font-medium transition-all bg-background/60 hover:bg-background/80 border border-border"
-                    >
-                      {cat.name}
-                    </Link>
-                  ))}
-                </div>
-                
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="inline-flex items-center rounded-full bg-accent/15 text-accent px-4 py-1 text-sm font-medium">
-                    {totalProducts} {totalProducts === 1 ? "Product" : "Products"}
-                  </span>
-                  {hasActiveFilters && (
-                    <Button size="sm" variant="outline" onClick={clearFilters}>
-                      Clear Filters
-                    </Button>
-                  )}
-                </div>
+                ))}
+              </div>
+              
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center rounded-full bg-accent/15 text-accent px-4 py-1 text-sm font-medium">
+                  {totalProducts} {totalProducts === 1 ? "Product" : "Products"}
+                </span>
+                {hasActiveFilters && (
+                  <Button size="sm" variant="outline" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                )}
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
+      <div className="container mx-auto px-4 pb-6">
         {/* Toolbar */}
           <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
           {/* Filter Button (for all views) */}
