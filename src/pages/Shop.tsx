@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import ProductCard from "@/components/ProductCard";
+import Header from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -367,6 +368,8 @@ const Shop = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
+      
       {/* Category Hero Banner (only when viewing a specific category) */}
       {isCategoryView && currentCategory && (
         <div className="relative h-64 md:h-80 w-full mb-10 overflow-hidden">
@@ -505,6 +508,7 @@ const Shop = () => {
           </div>
         )}
 
+      <div className="container mx-auto px-4 pb-6">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
           {/* Filter Button (for all views) */}
