@@ -518,7 +518,6 @@ const Shop = () => {
                 )}
               </Button>
             </SheetTrigger>
-            {/* @ts-expect-error - SheetContent does accept children despite type definition */}
             <SheetContent side="left" className="w-[300px] overflow-y-auto">
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold">Filters</h3>
