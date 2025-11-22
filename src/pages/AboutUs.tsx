@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { SEO } from "@/components/SEO";
 
 const AboutUs = () => {
   const [content, setContent] = useState<string>("");
@@ -13,7 +14,8 @@ const AboutUs = () => {
 
   const fetchPageContent = async () => {
     try {
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from('pages')
         .select('content')
         .eq('slug', 'about-us')
@@ -30,6 +32,11 @@ const AboutUs = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="About Us - Tashna Eyewear"
+        description="Learn about Tashna Eyewear's mission to provide premium eyewear in Pakistan."
+        canonical="/about-us"
+      />
       <Header />
       
       <main className="flex-1 py-12">

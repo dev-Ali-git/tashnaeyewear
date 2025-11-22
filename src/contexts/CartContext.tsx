@@ -31,7 +31,15 @@ interface CartItem {
 interface CartContextType {
   cartItems: CartItem[];
   loading: boolean;
-  addToCart: (productId: string, variantId?: string, lensTypeId?: string, quantity?: number) => Promise<void>;
+  addToCart: (
+    productId: string, 
+    variantId?: string, 
+    lensTypeId?: string, 
+    quantity?: number,
+    hasEyesight?: boolean,
+    prescriptionData?: any,
+    prescriptionImageUrl?: string
+  ) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   removeFromCart: (cartItemId: string) => Promise<void>;
   refreshCart: () => Promise<void>;
@@ -88,7 +96,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     productId: string,
     variantId?: string,
     lensTypeId?: string,
-    quantity: number = 1
+    quantity: number = 1,
+    hasEyesight?: boolean,
+    prescriptionData?: any,
+    prescriptionImageUrl?: string
   ) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -98,6 +109,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         variant_id: variantId || null,
         lens_type_id: lensTypeId || null,
         quantity,
+        has_eyesight: hasEyesight || false,
+        prescription_data: prescriptionData || null,
+        prescription_image_url: prescriptionImageUrl || null,
       };
 
       if (user) {

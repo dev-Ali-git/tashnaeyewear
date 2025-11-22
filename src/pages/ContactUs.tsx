@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Mail, Phone, MapPin, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SEO } from "@/components/SEO";
 
 const ContactUs = () => {
   const { toast } = useToast();
@@ -27,7 +28,8 @@ const ContactUs = () => {
 
   const fetchPageContent = async () => {
     try {
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from('pages')
         .select('content')
         .eq('slug', 'contact-us')
@@ -47,7 +49,8 @@ const ContactUs = () => {
     setSubmitting(true);
 
     try {
-      const { error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
         .from('contact_submissions')
         .insert([formData]);
 
@@ -73,6 +76,11 @@ const ContactUs = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="Contact Us - Tashna Eyewear"
+        description="Get in touch with Tashna Eyewear support team for any queries about our premium eyewear."
+        canonical="/contact-us"
+      />
       <Header />
       
       <main className="flex-1 py-12">

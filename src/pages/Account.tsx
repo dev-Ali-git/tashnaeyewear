@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Package, MapPin, User as UserIcon, Heart, Loader2, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -62,10 +63,16 @@ const Account = () => {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     checkUser();
   }, []);
+
+  const filteredOrders = orders.filter(order => {
+    if (statusFilter === "all") return true;
+    return order.status === statusFilter;
+  });
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -263,15 +270,32 @@ const Account = () => {
           </TabsList>
 
           <TabsContent value="orders" className="space-y-4">
-            {orders.length === 0 ? (
+            <div className="flex justify-end mb-4">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Orders</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="shipped">Shipped</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {filteredOrders.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No orders yet</p>
+                  <p className="text-muted-foreground">
+                    {statusFilter === "all" ? "No orders yet" : `No ${statusFilter} orders found`}
+                  </p>
                 </CardContent>
               </Card>
             ) : (
-              orders.map((order) => (
+              filteredOrders.map((order) => (
                 <Card key={order.id}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
@@ -281,11 +305,20 @@ const Account = () => {
                           {new Date(order.created_at).toLocaleDateString()}
                         </CardDescription>
                       </div>
-                      <Badge variant={
-                        order.status === "delivered" ? "default" :
-                        order.status === "cancelled" ? "destructive" : "secondary"
-                      }>
-                        {order.status}
+                      <Badge
+                        variant={
+                          order.status === "delivered" ? "default" :
+                          order.status === "cancelled" ? "destructive" :
+                          order.status === "shipped" ? "default" :
+                          order.status === "processing" ? "secondary" : "outline"
+                        }
+                        className={
+                          order.status === "shipped" ? "bg-blue-500 hover:bg-blue-600" :
+                          order.status === "processing" ? "bg-yellow-500 hover:bg-yellow-600" :
+                          order.status === "pending" ? "bg-gray-500 hover:bg-gray-600" : ""
+                        }
+                      >
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                       </Badge>
                     </div>
                   </CardHeader>

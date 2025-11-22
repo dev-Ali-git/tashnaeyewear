@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
+import { SEO } from "@/components/SEO";
 
 interface Product {
   id: string;
@@ -136,13 +137,11 @@ const ProductDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [slug, toast, navigate]);
+  }, [slug, navigate, toast]);
 
   useEffect(() => {
-    if (slug) {
-      fetchProductData();
-    }
-  }, [slug, fetchProductData]);
+    fetchProductData();
+  }, [fetchProductData]);
 
   const calculateTotalPrice = () => {
     if (!product) return 0;
@@ -208,11 +207,42 @@ const ProductDetail = () => {
     
     setIsAddingToCart(true);
     try {
+      let prescriptionImageUrl: string | undefined;
+      
+      // Upload prescription image if exists
+      if (lensConfig.prescriptionImage) {
+        const file = lensConfig.prescriptionImage;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+        const filePath = `prescriptions/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Error uploading prescription:', uploadError);
+          toast({
+            title: "Upload Error",
+            description: "Failed to upload prescription image. Adding to cart without it.",
+            variant: "destructive",
+          });
+        } else {
+          const { data } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          prescriptionImageUrl = data.publicUrl;
+        }
+      }
+
       await addToCart(
         product.id,
         selectedVariant || undefined,
         lensConfig.lensTypeId || undefined,
-        quantity
+        quantity,
+        lensConfig.hasEyesight,
+        lensConfig.prescriptionData,
+        prescriptionImageUrl
       );
     } finally {
       setIsAddingToCart(false);
@@ -262,26 +292,46 @@ const ProductDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 py-8">
-          <div className="container mx-auto px-4">
-            <div className="text-center py-20">Loading product details...</div>
-          </div>
-        </main>
-        <Footer />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
-  if (!product) {
-    return null;
-  }
+  if (!product) return null;
+
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": product.title,
+    "image": product.images || [],
+    "description": product.description,
+    "sku": variants.find(v => v.id === selectedVariant)?.sku || product.id,
+    "brand": {
+      "@type": "Brand",
+      "name": "Tashna Eyewear"
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": `https://tashnaeyewear.com/product/${slug}`,
+      "priceCurrency": "PKR",
+      "price": product.base_price,
+      "availability": "https://schema.org/InStock"
+    }
+  };
 
   const productImages = getProductImages();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-white">
+      <SEO 
+        title={`${product.title} | Tashna Eyewear`}
+        description={product.description || `Buy ${product.title} online at Tashna Eyewear.`}
+        canonical={`/product/${slug}`}
+        image={product.images?.[0]}
+        type="product"
+        schema={productSchema}
+      />
       <Header />
       
       <main className="flex-1 py-8">

@@ -1,0 +1,31 @@
+# Tashna Eyewear
+
+> Premium Frames, Sunglasses & Contact Lenses in Pakistan.
+
+## Website Overview
+Tashna Eyewear is a premium eyewear brand based in Pakistan, offering a wide range of stylish frames, sunglasses, blue-cut protection glasses, and contact lenses. We provide expert lens customization and fast delivery across the country.
+
+## Core Offerings
+- **Eyeglasses:** Prescription frames for men, women, and kids.
+- **Sunglasses:** Trendy sunglasses with UV protection.
+- **Contact Lenses:** Colored and prescription contact lenses.
+- **Blue Cut Lenses:** Protection against digital eye strain.
+
+## Navigation Structure
+- [Home](/) - The main landing page featuring new arrivals and best sellers.
+- [Shop](/shop) - Browse our complete collection of eyewear.
+- [Contact Us](/contact-us) - Get in touch with our support team.
+- [About Us](/about-us) - Learn about our mission and values.
+- [FAQ](/faq) - Frequently asked questions about prescriptions, shipping, and returns.
+- [Shipping Policy](/shipping-policy) - Information on shipping rates and times.
+- [Returns & Exchanges](/returns-exchanges) - Our 30-day return policy details.
+
+## Technical Details
+- **Platform:** React / Vite
+- **Shipping:** Free shipping on orders over specific amount (check site).
+- **Returns:** 30-day return policy.
+
+- Computer Glasses (Blue Cut)
+
+## Contact Information
+- Email: support@tashnaeyewear.com

@@ -1,16 +1,25 @@
 import { Link } from "react-router-dom";
 import { Facebook, Instagram, Twitter } from "lucide-react";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 const Footer = () => {
+  const { footerLogo } = useSiteSettings();
+  
   return (
     <footer className="bg-secondary mt-20">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="text-xl font-bold mb-4">
-              Tashna <span className="text-accent">Eyewear</span>
-            </h3>
+            {footerLogo.type === 'text' ? (
+              <h3 className="text-xl font-bold mb-4">
+                {footerLogo.text?.split(' ')[0]} <span className="text-accent">{footerLogo.text?.split(' ').slice(1).join(' ')}</span>
+              </h3>
+            ) : (
+              <Link to="/" className="inline-block mb-4">
+                <img src={footerLogo.url} alt="Logo" className="h-10 w-auto" />
+              </Link>
+            )}
             <p className="text-sm text-muted-foreground">
               Premium eyewear for every vision. Quality frames, expert care.
             </p>

@@ -2,13 +2,15 @@ import { Link, useLocation } from "react-router-dom";
 import { ShoppingCart, User, Search, Menu, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { Badge } from "@/components/ui/badge";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface Category {
   id: string;
@@ -19,11 +21,20 @@ interface Category {
 const Header = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const { cartCount } = useCart();
   const { wishlistItems } = useWishlist();
+  const { headerLogo } = useSiteSettings();
+
+  const checkUser = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+    if (user) {
+      checkAdminRole(user.id);
+    }
+  }, []);
 
   useEffect(() => {
     checkUser();
@@ -37,15 +48,7 @@ const Header = () => {
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
-
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
-    if (user) {
-      checkAdminRole(user.id);
-    }
-  };
+  }, [checkUser]);
 
   const fetchCategories = async () => {
     const { data } = await supabase
@@ -86,8 +89,12 @@ const Header = () => {
           </Button>
 
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold tracking-tight">
-            Tashna <span className="text-accent">Eyewear</span>
+          <Link to="/" className={headerLogo.type === 'text' ? "text-2xl font-bold tracking-tight" : "flex items-center"}>
+            {headerLogo.type === 'text' ? (
+              <>{headerLogo.text?.split(' ')[0]} <span className="text-accent">{headerLogo.text?.split(' ').slice(1).join(' ')}</span></>
+            ) : (
+              <img src={headerLogo.url} alt="Logo" className="h-12 w-auto" />
+            )}
           </Link>
 
           {/* Desktop Search */}

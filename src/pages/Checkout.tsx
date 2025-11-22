@@ -91,6 +91,13 @@ const Checkout = () => {
 
   const fetchCartItems = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("cart_items")
       .select(`
@@ -99,7 +106,8 @@ const Checkout = () => {
         product_variants (color, size, price_adjustment),
         lens_types (name, price_adjustment)
       `)
-      .order("created_at", { ascending: false });
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false});
 
     if (error) {
       toast({
@@ -642,8 +650,14 @@ const Checkout = () => {
                         {item.lens_types && (
                           <p className="text-xs text-muted-foreground">{item.lens_types.name}</p>
                         )}
-                        <p className="text-sm">
-                          Rs. {calculateItemPrice(item).toLocaleString()} × {item.quantity}
+                        <p className="text-xs text-muted-foreground">
+                          Frame: Rs. {(item.products.base_price + (item.product_variants?.price_adjustment || 0)).toLocaleString()}
+                          {item.lens_types && (
+                            <span> + Lens: Rs. {item.lens_types.price_adjustment?.toLocaleString() || '0'}</span>
+                          )}
+                        </p>
+                        <p className="text-sm font-medium">
+                          Rs. {calculateItemPrice(item).toLocaleString()} × {item.quantity} = Rs. {(calculateItemPrice(item) * item.quantity).toLocaleString()}
                         </p>
                       </div>
                     </div>

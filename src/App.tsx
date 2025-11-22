@@ -23,6 +23,7 @@ import Analytics from "./pages/admin/Analytics";
 import LensTypes from "./pages/admin/LensTypes";
 import Categories from "./pages/admin/Categories";
 import Pages from "./pages/admin/Pages";
+import Settings from "./pages/admin/Settings";
 import ContactUs from "./pages/ContactUs";
 import ShippingPolicy from "./pages/ShippingPolicy";
 import ReturnsExchanges from "./pages/ReturnsExchanges";
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/admin/analytics" element={<Analytics />} />
               <Route path="/admin/lens-types" element={<LensTypes />} />
               <Route path="/admin/pages" element={<Pages />} />
+              <Route path="/admin/settings" element={<Settings />} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -81,9 +81,17 @@ const Cart = () => {
                             <p className="text-sm text-muted-foreground mb-1">{variantInfo}</p>
                           )}
                           {item.lens_type && (
-                            <p className="text-sm text-muted-foreground mb-2">{item.lens_type.name}</p>
+                            <p className="text-sm text-muted-foreground">{item.lens_type.name}</p>
                           )}
-                          <p className="font-bold">Rs. {itemPrice.toLocaleString()}</p>
+                          <div className="mt-2 space-y-1">
+                            <p className="text-sm text-muted-foreground">
+                              Frame: Rs. {(item.product.base_price + (item.variant?.price_adjustment || 0)).toLocaleString()}
+                              {item.lens_type && (
+                                <span> + Lens: Rs. {item.lens_type.price_adjustment?.toLocaleString() || '0'}</span>
+                              )}
+                            </p>
+                            <p className="font-bold">Rs. {itemPrice.toLocaleString()} × {item.quantity}</p>
+                          </div>
                         </div>
                         <div className="flex flex-col items-end justify-between">
                           <Button 

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
@@ -11,6 +11,8 @@ import categoryFrames from "@/assets/category-frames.jpg";
 import categorySunglasses from "@/assets/category-sunglasses.jpg";
 import categoryProtection from "@/assets/category-protection.jpg";
 import categoryContacts from "@/assets/category-contacts.jpg";
+import { SEO } from "@/components/SEO";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 interface ProductVariant {
   stock: number;
@@ -39,16 +41,9 @@ const Index = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingNewArrivals, setLoadingNewArrivals] = useState(true);
+  const { seoLogo } = useSiteSettings();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    await Promise.all([fetchFeaturedProducts(), fetchNewArrivals(), fetchCategories()]);
-  };
-
-  const fetchFeaturedProducts = async () => {
+  const fetchFeaturedProducts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -71,9 +66,9 @@ const Index = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchNewArrivals = async () => {
+  const fetchNewArrivals = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -97,9 +92,9 @@ const Index = () => {
     } finally {
       setLoadingNewArrivals(false);
     }
-  };
+  }, []);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('categories')
@@ -111,10 +106,39 @@ const Index = () => {
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      await Promise.all([fetchFeaturedProducts(), fetchNewArrivals(), fetchCategories()]);
+    };
+    fetchData();
+  }, [fetchFeaturedProducts, fetchNewArrivals, fetchCategories]);
+
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Tashna Eyewear",
+    "url": "https://tashnaeyewear.com",
+    "logo": seoLogo.startsWith('http') ? seoLogo : `https://tashnaeyewear.com${seoLogo}`,
+    "sameAs": [
+      "https://facebook.com/tashnaeyewear",
+      "https://instagram.com/tashnaeyewear"
+    ],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+92-300-1234567",
+      "contactType": "customer service"
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-white">
+      <SEO 
+        title="Tashna Eyewear - Premium Frames, Sunglasses & Contact Lenses"
+        description="Shop premium eyewear at Tashna. Discover stylish frames, sunglasses, blue-cut protection glasses, and contact lenses with expert lens customization. Fast delivery across Pakistan."
+        schema={organizationSchema}
+      />
       <Header />
       
       <main className="flex-1">

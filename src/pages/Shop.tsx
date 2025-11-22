@@ -27,6 +27,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { SEO } from "@/components/SEO";
 
 interface Product {
   id: string;
@@ -366,8 +367,30 @@ const Shop = () => {
     </div>
   );
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [{
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://tashnaeyewear.com"
+    }, {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Shop",
+      "item": "https://tashnaeyewear.com/shop"
+    }]
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
+      <SEO 
+        title="Shop Eyewear - Tashna Eyewear"
+        description="Browse our complete collection of premium eyewear, sunglasses, and contact lenses."
+        canonical="/shop"
+        schema={breadcrumbSchema}
+      />
       <Header />
       
       {/* Category Hero Banner (only when viewing a specific category) */}

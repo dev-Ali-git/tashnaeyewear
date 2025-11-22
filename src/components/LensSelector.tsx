@@ -4,6 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, X, FileImage } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,6 +30,10 @@ export interface LensConfiguration {
   prescriptionData?: {
     rightEye: EyeData;
     leftEye: EyeData;
+    rightPrism?: PrismData;
+    leftPrism?: PrismData;
+    twoPDNumbers?: boolean;
+    addPrism?: boolean;
   };
 }
 
@@ -39,6 +45,13 @@ interface EyeData {
   pd: string;
 }
 
+interface PrismData {
+  verticalPrism: string;
+  verticalBase: string;
+  horizontalPrism: string;
+  horizontalBase: string;
+}
+
 const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,10 +61,90 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
   const [prescriptionPreview, setPrescriptionPreview] = useState<string | null>(null);
   const [rightEye, setRightEye] = useState<EyeData>({
-    sph: '', cyl: '', axis: '', add: '', pd: ''
+    sph: '0.00', cyl: '0.00', axis: '0', add: '0.00', pd: ''
   });
   const [leftEye, setLeftEye] = useState<EyeData>({
-    sph: '', cyl: '', axis: '', add: '', pd: ''
+    sph: '0.00', cyl: '0.00', axis: '0', add: '0.00', pd: ''
+  });
+  const [rightPrism, setRightPrism] = useState<PrismData>({
+    verticalPrism: '0.00', verticalBase: 'n/a', horizontalPrism: '0.00', horizontalBase: 'n/a'
+  });
+  const [leftPrism, setLeftPrism] = useState<PrismData>({
+    verticalPrism: '0.00', verticalBase: 'n/a', horizontalPrism: '0.00', horizontalBase: 'n/a'
+  });
+  const [twoPDNumbers, setTwoPDNumbers] = useState(false);
+  const [addPrism, setAddPrism] = useState(false);
+
+  // Generate number ranges
+  const generateSphCylRange = () => {
+    const values = [];
+    for (let i = -16; i <= 16; i += 0.25) {
+      const formatted = i > 0 ? `+${i.toFixed(2)}` : i.toFixed(2);
+      values.push(formatted);
+    }
+    return values;
+  };
+
+  const generateAddRange = () => {
+    const values = [];
+    for (let i = 0; i <= 6; i += 0.25) {
+      values.push(i === 0 ? i.toFixed(2) : `+${i.toFixed(2)}`);
+    }
+    return values;
+  };
+
+  const generatePrismRange = () => {
+    const values = [];
+    for (let i = 0; i <= 5; i += 0.5) {
+      values.push(i.toFixed(2));
+    }
+    return values;
+  };
+
+  const generateAxisRange = () => {
+    const values = [];
+    for (let i = 0; i <= 180; i++) {
+      values.push(i.toString());
+    }
+    return values;
+  };
+
+  const generateSinglePDRange = () => {
+    const values = [];
+    for (let i = 50; i <= 80; i++) {
+      values.push(i.toString());
+    }
+    return values;
+  };
+
+  const generateDoublePDRange = () => {
+    const values = [];
+    for (let i = 25; i <= 40; i++) {
+      values.push(i.toString());
+    }
+    return values;
+  };
+
+  const sphCylOptions = generateSphCylRange();
+  const addOptions = generateAddRange();
+  const prismOptions = generatePrismRange();
+  const axisOptions = generateAxisRange();
+  const singlePDOptions = generateSinglePDRange();
+  const doublePDOptions = generateDoublePDRange();
+
+  // Helper to get complete prescription data
+  const getCompletePrescriptionData = (
+    customRightEye?: EyeData, 
+    customLeftEye?: EyeData,
+    customRightPrism?: PrismData,
+    customLeftPrism?: PrismData
+  ) => ({
+    rightEye: customRightEye || rightEye,
+    leftEye: customLeftEye || leftEye,
+    rightPrism: addPrism ? (customRightPrism || rightPrism) : undefined,
+    leftPrism: addPrism ? (customLeftPrism || leftPrism) : undefined,
+    twoPDNumbers,
+    addPrism
   });
 
   const handleEyesightChange = (value: string) => {
@@ -72,7 +165,7 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
       lensTypeId, // Always send lens type ID even when hasEyesight is false
       prescriptionType: hasEyesight ? prescriptionType : undefined,
       prescriptionImage: hasEyesight && prescriptionType === 'upload' ? prescriptionFile || undefined : undefined,
-      prescriptionData: hasEyesight && prescriptionType === 'manual' ? { rightEye, leftEye } : undefined
+      prescriptionData: hasEyesight && prescriptionType === 'manual' ? getCompletePrescriptionData() : undefined
     });
   };
 
@@ -85,7 +178,7 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
       lensTypeId: selectedLensType,
       prescriptionType: type,
       prescriptionImage: type === 'upload' ? prescriptionFile || undefined : undefined,
-      prescriptionData: type === 'manual' ? { rightEye, leftEye } : undefined
+      prescriptionData: type === 'manual' ? getCompletePrescriptionData() : undefined
     });
   };
 
@@ -340,104 +433,127 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
 
             {/* Manual mode */}
             <div className={prescriptionType === 'manual' ? 'space-y-6' : 'hidden'}>
-                {/* Right Eye */}
-                <div>
+              {/* Header Row */}
+              <div className="bg-gray-800 text-white p-3 rounded-t-lg">
+                <div className="grid grid-cols-4 gap-3 text-center font-medium text-sm">
+                  <div>Sphere (SPH)</div>
+                  <div>Cylinder (CYL)</div>
+                  <div>Axis</div>
+                  <div>Addition (near) ADD</div>
+                </div>
+              </div>
+
+              {/* Right Eye */}
+              <div>
                 <h4 className="font-medium mb-3">Right Eye (OD)</h4>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <Label htmlFor="right-sph" className="text-xs">SPH</Label>
-                    <Input
-                      id="right-sph"
-                      placeholder="0.00"
+                    <Select
                       value={rightEye.sph}
-                      onChange={(e) => {
-                        const newRightEye = { ...rightEye, sph: e.target.value };
+                      onValueChange={(value) => {
+                        const newRightEye = { ...rightEye, sph: value };
                         setHasEyesight(true);
                         setRightEye(newRightEye);
                         onLensConfigChange({
                           hasEyesight: true,
                           lensTypeId: selectedLensType,
                           prescriptionType: 'manual',
-                          prescriptionData: { rightEye: newRightEye, leftEye }
+                          prescriptionData: getCompletePrescriptionData()
                         });
                       }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="0.00" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {sphCylOptions.map((val) => (
+                          <SelectItem key={`right-sph-${val}`} value={val}>
+                            {val}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label htmlFor="right-cyl" className="text-xs">CYL</Label>
-                    <Input
-                      id="right-cyl"
-                      placeholder="0.00"
+                    <Select
                       value={rightEye.cyl}
-                      onChange={(e) => {
-                        const newRightEye = { ...rightEye, cyl: e.target.value };
+                      onValueChange={(value) => {
+                        const newRightEye = { ...rightEye, cyl: value };
                         setHasEyesight(true);
                         setRightEye(newRightEye);
                         onLensConfigChange({
                           hasEyesight: true,
                           lensTypeId: selectedLensType,
                           prescriptionType: 'manual',
-                          prescriptionData: { rightEye: newRightEye, leftEye }
+                          prescriptionData: getCompletePrescriptionData(newRightEye, leftEye)
                         });
                       }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="0.00" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {sphCylOptions.map((val) => (
+                          <SelectItem key={`right-cyl-${val}`} value={val}>
+                            {val}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label htmlFor="right-axis" className="text-xs">AXIS</Label>
-                    <Input
-                      id="right-axis"
-                      placeholder="0"
+                    <Select
                       value={rightEye.axis}
-                      onChange={(e) => {
-                        const newRightEye = { ...rightEye, axis: e.target.value };
+                      onValueChange={(value) => {
+                        const newRightEye = { ...rightEye, axis: value };
                         setHasEyesight(true);
                         setRightEye(newRightEye);
                         onLensConfigChange({
                           hasEyesight: true,
                           lensTypeId: selectedLensType,
                           prescriptionType: 'manual',
-                          prescriptionData: { rightEye: newRightEye, leftEye }
+                          prescriptionData: getCompletePrescriptionData(newRightEye, leftEye)
                         });
                       }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="0" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {axisOptions.map((val) => (
+                          <SelectItem key={`right-axis-${val}`} value={val}>
+                            {val}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label htmlFor="right-add" className="text-xs">ADD</Label>
-                    <Input
-                      id="right-add"
-                      placeholder="0.00"
+                    <Select
                       value={rightEye.add}
-                      onChange={(e) => {
-                        const newRightEye = { ...rightEye, add: e.target.value };
+                      onValueChange={(value) => {
+                        const newRightEye = { ...rightEye, add: value };
                         setHasEyesight(true);
                         setRightEye(newRightEye);
                         onLensConfigChange({
                           hasEyesight: true,
                           lensTypeId: selectedLensType,
                           prescriptionType: 'manual',
-                          prescriptionData: { rightEye: newRightEye, leftEye }
+                          prescriptionData: getCompletePrescriptionData(newRightEye, leftEye)
                         });
                       }}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="right-pd" className="text-xs">PD</Label>
-                    <Input
-                      id="right-pd"
-                      placeholder="0.0"
-                      value={rightEye.pd}
-                      onChange={(e) => {
-                        const newRightEye = { ...rightEye, pd: e.target.value };
-                        setHasEyesight(true);
-                        setRightEye(newRightEye);
-                        onLensConfigChange({
-                          hasEyesight: true,
-                          lensTypeId: selectedLensType,
-                          prescriptionType: 'manual',
-                          prescriptionData: { rightEye: newRightEye, leftEye }
-                        });
-                      }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="0.00" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {addOptions.map((val) => (
+                          <SelectItem key={`right-add-${val}`} value={val}>
+                            {val}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -445,104 +561,486 @@ const LensSelector = ({ lensTypes, onLensConfigChange }: LensSelectorProps) => {
               {/* Left Eye */}
               <div>
                 <h4 className="font-medium mb-3">Left Eye (OS)</h4>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <Label htmlFor="left-sph" className="text-xs">SPH</Label>
-                    <Input
-                      id="left-sph"
-                      placeholder="0.00"
+                    <Select
                       value={leftEye.sph}
-                      onChange={(e) => {
-                        const newLeftEye = { ...leftEye, sph: e.target.value };
+                      onValueChange={(value) => {
+                        const newLeftEye = { ...leftEye, sph: value };
                         setHasEyesight(true);
                         setLeftEye(newLeftEye);
                         onLensConfigChange({
                           hasEyesight: true,
                           lensTypeId: selectedLensType,
                           prescriptionType: 'manual',
-                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                          prescriptionData: getCompletePrescriptionData(rightEye, newLeftEye)
                         });
                       }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="0.00" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {sphCylOptions.map((val) => (
+                          <SelectItem key={`left-sph-${val}`} value={val}>
+                            {val}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label htmlFor="left-cyl" className="text-xs">CYL</Label>
-                    <Input
-                      id="left-cyl"
-                      placeholder="0.00"
+                    <Select
                       value={leftEye.cyl}
-                      onChange={(e) => {
-                        const newLeftEye = { ...leftEye, cyl: e.target.value };
+                      onValueChange={(value) => {
+                        const newLeftEye = { ...leftEye, cyl: value };
                         setHasEyesight(true);
                         setLeftEye(newLeftEye);
                         onLensConfigChange({
                           hasEyesight: true,
                           lensTypeId: selectedLensType,
                           prescriptionType: 'manual',
-                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                          prescriptionData: getCompletePrescriptionData(rightEye, newLeftEye)
                         });
                       }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="0.00" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {sphCylOptions.map((val) => (
+                          <SelectItem key={`left-cyl-${val}`} value={val}>
+                            {val}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label htmlFor="left-axis" className="text-xs">AXIS</Label>
-                    <Input
-                      id="left-axis"
-                      placeholder="0"
+                    <Select
                       value={leftEye.axis}
-                      onChange={(e) => {
-                        const newLeftEye = { ...leftEye, axis: e.target.value };
+                      onValueChange={(value) => {
+                        const newLeftEye = { ...leftEye, axis: value };
                         setHasEyesight(true);
                         setLeftEye(newLeftEye);
                         onLensConfigChange({
                           hasEyesight: true,
                           lensTypeId: selectedLensType,
                           prescriptionType: 'manual',
-                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                          prescriptionData: getCompletePrescriptionData(rightEye, newLeftEye)
                         });
                       }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="0" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {axisOptions.map((val) => (
+                          <SelectItem key={`left-axis-${val}`} value={val}>
+                            {val}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label htmlFor="left-add" className="text-xs">ADD</Label>
-                    <Input
-                      id="left-add"
-                      placeholder="0.00"
+                    <Select
                       value={leftEye.add}
-                      onChange={(e) => {
-                        const newLeftEye = { ...leftEye, add: e.target.value };
+                      onValueChange={(value) => {
+                        const newLeftEye = { ...leftEye, add: value };
                         setHasEyesight(true);
                         setLeftEye(newLeftEye);
                         onLensConfigChange({
                           hasEyesight: true,
                           lensTypeId: selectedLensType,
                           prescriptionType: 'manual',
-                          prescriptionData: { rightEye, leftEye: newLeftEye }
+                          prescriptionData: getCompletePrescriptionData(rightEye, newLeftEye)
                         });
                       }}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="left-pd" className="text-xs">PD</Label>
-                    <Input
-                      id="left-pd"
-                      placeholder="0.0"
-                      value={leftEye.pd}
-                      onChange={(e) => {
-                        const newLeftEye = { ...leftEye, pd: e.target.value };
-                        setHasEyesight(true);
-                        setLeftEye(newLeftEye);
-                        onLensConfigChange({
-                          hasEyesight: true,
-                          lensTypeId: selectedLensType,
-                          prescriptionType: 'manual',
-                          prescriptionData: { rightEye, leftEye: newLeftEye }
-                        });
-                      }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="0.00" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {addOptions.map((val) => (
+                          <SelectItem key={`left-add-${val}`} value={val}>
+                            {val}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
+
+              {/* Pupillary Distance (PD) Section */}
+              <div className="border-t pt-4">
+                <div className="flex items-center gap-4 mb-4">
+                  <h4 className="font-semibold">Pupillary Distance (PD):</h4>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="twoPD"
+                      checked={twoPDNumbers}
+                      onCheckedChange={(checked) => {
+                        setTwoPDNumbers(checked as boolean);
+                        if (!checked) {
+                          const newRightEye = { ...rightEye, pd: '' };
+                          const newLeftEye = { ...leftEye, pd: '' };
+                          setRightEye(newRightEye);
+                          setLeftEye(newLeftEye);
+                          onLensConfigChange({
+                            hasEyesight: true,
+                            lensTypeId: selectedLensType,
+                            prescriptionType: 'manual',
+                            prescriptionData: getCompletePrescriptionData(newRightEye, newLeftEye)
+                          });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="twoPD" className="cursor-pointer">
+                      Two PD numbers
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="addPrism"
+                      checked={addPrism}
+                      onCheckedChange={(checked) => setAddPrism(checked as boolean)}
+                    />
+                    <Label htmlFor="addPrism" className="cursor-pointer">
+                      Add prism
+                    </Label>
+                  </div>
+                </div>
+
+                {/* PD Input Fields */}
+                <div className={twoPDNumbers ? "grid grid-cols-2 gap-4 max-w-md" : "max-w-xs"}>
+                  {twoPDNumbers ? (
+                    <>
+                      <div>
+                        <Select
+                          value={rightEye.pd}
+                          onValueChange={(value) => {
+                            const newRightEye = { ...rightEye, pd: value };
+                            setHasEyesight(true);
+                            setRightEye(newRightEye);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(newRightEye, leftEye)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Right PD" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {doublePDOptions.map((val) => (
+                              <SelectItem key={`right-pd-two-${val}`} value={val}>
+                                {val}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Select
+                          value={leftEye.pd}
+                          onValueChange={(value) => {
+                            const newLeftEye = { ...leftEye, pd: value };
+                            setHasEyesight(true);
+                            setLeftEye(newLeftEye);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(rightEye, newLeftEye)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Left PD" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {doublePDOptions.map((val) => (
+                              <SelectItem key={`left-pd-two-${val}`} value={val}>
+                                {val}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <Select
+                        value={rightEye.pd}
+                        onValueChange={(value) => {
+                          const newRightEye = { ...rightEye, pd: value };
+                          const newLeftEye = { ...leftEye, pd: value };
+                          setHasEyesight(true);
+                          setRightEye(newRightEye);
+                          setLeftEye(newLeftEye);
+                          onLensConfigChange({
+                            hasEyesight: true,
+                            lensTypeId: selectedLensType,
+                            prescriptionType: 'manual',
+                            prescriptionData: getCompletePrescriptionData(newRightEye, newLeftEye)
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="PD" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {singlePDOptions.map((val) => (
+                            <SelectItem key={`single-pd-${val}`} value={val}>
+                              {val}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Add Prism Section */}
+              {addPrism && (
+                <div className="border-t pt-4">
+                  {/* Prism Header Row */}
+                  <div className="bg-gray-800 text-white p-3 rounded-t-lg mb-4">
+                    <div className="grid grid-cols-5 gap-3 text-center font-medium text-sm">
+                      <div>Add Prism</div>
+                      <div>Vertical Prism</div>
+                      <div>Base Direction</div>
+                      <div>Horizontal Prism</div>
+                      <div>Base Direction</div>
+                    </div>
+                  </div>
+
+                  {/* Right Eye Prism */}
+                  <div>
+                    <h4 className="font-medium mb-3">Right Eye (OD)</h4>
+                    <div className="grid grid-cols-5 gap-3">
+                      <div className="flex items-center justify-center">
+                        <span className="text-sm font-medium">Add Prism</span>
+                      </div>
+                      <div>
+                        <Select
+                          value={rightPrism.verticalPrism}
+                          onValueChange={(value) => {
+                            const newRightPrism = { ...rightPrism, verticalPrism: value };
+                            setRightPrism(newRightPrism);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(undefined, undefined, newRightPrism, undefined)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="0.00" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {prismOptions.map((val) => (
+                              <SelectItem key={`right-v-prism-${val}`} value={val}>
+                                {val}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Select
+                          value={rightPrism.verticalBase}
+                          onValueChange={(value) => {
+                            const newRightPrism = { ...rightPrism, verticalBase: value };
+                            setRightPrism(newRightPrism);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(undefined, undefined, newRightPrism, undefined)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="n/a" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="n/a">n/a</SelectItem>
+                            <SelectItem value="Up">Up</SelectItem>
+                            <SelectItem value="Down">Down</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Select
+                          value={rightPrism.horizontalPrism}
+                          onValueChange={(value) => {
+                            const newRightPrism = { ...rightPrism, horizontalPrism: value };
+                            setRightPrism(newRightPrism);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(undefined, undefined, newRightPrism, undefined)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="0.00" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {prismOptions.map((val) => (
+                              <SelectItem key={`right-h-prism-${val}`} value={val}>
+                                {val}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Select
+                          value={rightPrism.horizontalBase}
+                          onValueChange={(value) => {
+                            const newRightPrism = { ...rightPrism, horizontalBase: value };
+                            setRightPrism(newRightPrism);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(undefined, undefined, newRightPrism, undefined)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="n/a" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="n/a">n/a</SelectItem>
+                            <SelectItem value="In">In</SelectItem>
+                            <SelectItem value="Out">Out</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Left Eye Prism */}
+                  <div className="mt-6">
+                    <h4 className="font-medium mb-3">Left Eye (OS)</h4>
+                    <div className="grid grid-cols-5 gap-3">
+                      <div className="flex items-center justify-center">
+                        <span className="text-sm font-medium">Add Prism</span>
+                      </div>
+                      <div>
+                        <Select
+                          value={leftPrism.verticalPrism}
+                          onValueChange={(value) => {
+                            const newLeftPrism = { ...leftPrism, verticalPrism: value };
+                            setLeftPrism(newLeftPrism);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(undefined, undefined, undefined, newLeftPrism)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="0.00" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {prismOptions.map((val) => (
+                              <SelectItem key={`left-v-prism-${val}`} value={val}>
+                                {val}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Select
+                          value={leftPrism.verticalBase}
+                          onValueChange={(value) => {
+                            const newLeftPrism = { ...leftPrism, verticalBase: value };
+                            setLeftPrism(newLeftPrism);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(undefined, undefined, undefined, newLeftPrism)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="n/a" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="n/a">n/a</SelectItem>
+                            <SelectItem value="Up">Up</SelectItem>
+                            <SelectItem value="Down">Down</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Select
+                          value={leftPrism.horizontalPrism}
+                          onValueChange={(value) => {
+                            const newLeftPrism = { ...leftPrism, horizontalPrism: value };
+                            setLeftPrism(newLeftPrism);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(undefined, undefined, undefined, newLeftPrism)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="0.00" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {prismOptions.map((val) => (
+                              <SelectItem key={`left-h-prism-${val}`} value={val}>
+                                {val}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Select
+                          value={leftPrism.horizontalBase}
+                          onValueChange={(value) => {
+                            const newLeftPrism = { ...leftPrism, horizontalBase: value };
+                            setLeftPrism(newLeftPrism);
+                            onLensConfigChange({
+                              hasEyesight: true,
+                              lensTypeId: selectedLensType,
+                              prescriptionType: 'manual',
+                              prescriptionData: getCompletePrescriptionData(undefined, undefined, undefined, newLeftPrism)
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="n/a" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="n/a">n/a</SelectItem>
+                            <SelectItem value="In">In</SelectItem>
+                            <SelectItem value="Out">Out</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
